@@ -19,15 +19,16 @@ A browser galaxy you can actually command: persistent worlds, a legible economy,
 The public host is the celestial theater: RK4 gravity, inclined orbits, accretion disks, Roche rings, and a starfield you can orbit with the mouse. Galactic command — the strategic layer in this repository — runs beside it, and stays playable when the network is down.
 
 <p align="center">
-  <img src="docs/screenshots/black-hole.png" alt="Sagittarius-A and its accretion ring in the live Quantum Rim system view" width="100%" />
+  <img src="docs/screenshots/celestial-orders.png" alt="Celestial Orders over a star system, with velocity trails and the galactic command HUD" width="100%" />
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/solar-system.png" alt="Sol and a ringed world trailing through the live simulator" width="49%" />
-  <img src="docs/screenshots/figure8-simulation.png" alt="Proxima, Centauri, and Solaris in the live figure-8 choreography" width="49%" />
+  <img src="docs/screenshots/black-hole.png" alt="Sagittarius-A and its accretion ring in the system view" width="32%" />
+  <img src="docs/screenshots/solar-system.png" alt="Sol and a ringed world trailing through the simulator" width="32%" />
+  <img src="docs/screenshots/figure8-simulation.png" alt="Proxima, Centauri, and Solaris in the figure-8 choreography" width="32%" />
 </p>
 
-<p align="center"><sub>Captured from the live host at <a href="https://gravitas-kappa.vercel.app/simulation">gravitas-kappa.vercel.app/simulation</a>.</sub></p>
+<p align="center"><sub>Celestial Orders in galactic command. The smaller frames are from the system view.</sub></p>
 
 ---
 
