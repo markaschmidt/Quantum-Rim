@@ -14,11 +14,6 @@ import { useSimStore } from '../store/useSimStore';
 export function VelocityArrow({ bodyId, color }) {
   const arrowRef = useRef();
 
-  const speed = 1; // placeholder - actual speed read in useFrame
-
-  // Clamp arrow length: min 0.2, max 2.5 units
-  const arrowLength = 1; // will be computed in useFrame
-
   // Arrow shaft + cone geometry
   const { shaftGeo, coneGeo } = useMemo(() => {
     const shaftGeo = new THREE.CylinderGeometry(0.025, 0.025, 1, 8);

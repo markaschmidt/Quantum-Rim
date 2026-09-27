@@ -1,4 +1,4 @@
-/* Gravitas landing — nav state, reveals, counters, orbital hero animation. */
+/* Quantum Rim landing — nav state, reveals, counters, orbital hero animation. */
 
 const nav = document.getElementById('nav');
 const onScroll = () => nav && nav.classList.toggle('scrolled', window.scrollY > 40);

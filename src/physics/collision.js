@@ -9,6 +9,8 @@
  */
 
 import { G } from './gravity';
+import { decorateBody } from '../game/planetProfile';
+import { applyImpact, buildDebris } from './impact.js';
 
 /**
  * Find all colliding pairs among alive bodies.
@@ -17,9 +19,9 @@ import { G } from './gravity';
 export function detectCollisions(bodies) {
   const pairs = [];
   for (let i = 0; i < bodies.length; i++) {
-    if (!bodies[i].isAlive) continue;
+    if (!bodies[i].isAlive || bodies[i].intangibleTicks > 0) continue;
     for (let j = i + 1; j < bodies.length; j++) {
-      if (!bodies[j].isAlive) continue;
+      if (!bodies[j].isAlive || bodies[j].intangibleTicks > 0) continue;
       const dx = bodies[j].position[0] - bodies[i].position[0];
       const dy = bodies[j].position[1] - bodies[i].position[1];
       const dz = bodies[j].position[2] - bodies[i].position[2];
@@ -118,7 +120,7 @@ export function resolveMerger(bodyA, bodyB) {
   const dominant = bodyA.mass >= bodyB.mass ? bodyA : bodyB;
   const consumed = bodyA.mass >= bodyB.mass ? bodyB : bodyA;
 
-  const survivor = {
+  const survivor = decorateBody({
     ...dominant,
     mass: totalMass,
     radius: newRadius,
@@ -126,7 +128,8 @@ export function resolveMerger(bodyA, bodyB) {
     velocity: newVel,
     trail: [], // reset trail after merger
     isAlive: true,
-  };
+    profile: null,
+  });
 
   const dead = {
     ...consumed,
@@ -187,20 +190,62 @@ export function processCollisions(bodies, mode = 'merge') {
       result[i] = newA;
       result[j] = newB;
     } else {
-      // merger
-      const { survivor, dead, mergerPosition, impactSpeed } = resolveMerger(result[i], result[j]);
-      mergerEvents.push({ position: mergerPosition, impactSpeed, mass: survivor.mass });
-
-      // Replace dominant body, kill consumed
-      if (survivor.id === result[i].id) {
-        result[i] = survivor;
-        result[j] = dead;
+      const impact = applyImpact(result[i], result[j]);
+      const existingDebris = result.filter((body) => body.isDebris && body.isAlive).length;
+      const shards = buildDebris({
+        bodyA: result[i],
+        bodyB: result[j],
+        band: impact.band,
+        unit: impact.severity,
+        existingCount: existingDebris,
+        idBase: `${result[i].id}-${result[j].id}`,
+      });
+      if (!impact.merged) {
+        result[i] = impact.bodyA;
+        result[j] = impact.bodyB;
+        mergerEvents.push({
+          position: [
+            (result[i].position[0] + result[j].position[0]) / 2,
+            (result[i].position[1] + result[j].position[1]) / 2,
+            (result[i].position[2] + result[j].position[2]) / 2,
+          ],
+          impactSpeed: impact.speed,
+          mass: Math.min(result[i].mass, result[j].mass),
+          band: impact.band,
+          severity: impact.severity,
+          debrisCount: shards.length,
+          permanent: Boolean(result[i].kick?.permanent),
+          bodyIds: [result[i].id, result[j].id],
+        });
       } else {
-        result[j] = survivor;
-        result[i] = dead;
+        const { survivor, dead, mergerPosition, impactSpeed } = resolveMerger(result[i], result[j]);
+        const scarred = {
+          ...survivor,
+          scar: Math.min(1, (survivor.scar || 0) + 0.85),
+          orbitPerturbed: true,
+          kick: { band: 'cataclysm', permanent: true, excess: [0, 0, 0], severity: impact.severity },
+        };
+        mergerEvents.push({
+          position: mergerPosition,
+          impactSpeed,
+          mass: scarred.mass,
+          band: 'cataclysm',
+          severity: impact.severity,
+          debrisCount: shards.length,
+          permanent: true,
+          bodyIds: [scarred.id, dead.id],
+        });
+        if (scarred.id === result[i].id) {
+          result[i] = scarred;
+          result[j] = dead;
+        } else {
+          result[j] = scarred;
+          result[i] = dead;
+        }
+        dominantIds.push(scarred.id);
+        deadIds.push(dead.id);
       }
-      dominantIds.push(survivor.id);
-      deadIds.push(dead.id);
+      if (shards.length) result.push(...shards.map((shard) => decorateBody(shard)));
     }
   }
 

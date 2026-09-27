@@ -12,7 +12,7 @@ import { useSimStore } from '../store/useSimStore';
 const SIZE = 140;
 const PADDING = 12;
 
-export function MiniMap({ cameraRef }) {
+export function MiniMap() {
   const canvasRef = useRef();
 
   useEffect(() => {

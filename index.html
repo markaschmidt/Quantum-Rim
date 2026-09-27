@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gravitas — A Cinematic 3D Gravitational N-Body Simulator</title>
-  <meta name="description" content="Gravitas is a physically-accurate 3D gravitational N-body simulator in the browser. Stars, planets, black holes and asteroids orbit in real time with RK4 integration, tidal disruption, accretion disks and cinematic post-processing." />
+  <title>Quantum Rim — Galactic Crisis Command</title>
+  <meta name="description" content="Govern a living galaxy, resolve quantum-assisted crises, inspect persistent planets, and explore connected ruins in Quantum Rim." />
   <meta name="theme-color" content="#05060d" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="Gravitas — 3D Gravitational N-Body Simulator" />
-  <meta property="og:description" content="Watch stars, planets and black holes orbit in real-time 3D. RK4 physics, tidal disruption, accretion disks, 15 preset scenarios." />
+  <meta property="og:title" content="Quantum Rim — Galactic Crisis Command" />
+  <meta property="og:description" content="A browser-based civilization simulator with persistent worlds, strategic emergencies, quantum-assisted events, and graph expeditions." />
   <meta property="og:image" content="/media/hero.jpg" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -20,12 +20,12 @@
 </head>
 <body>
   <nav class="nav" id="nav">
-    <a class="nav__brand" href="/"><span class="nav__mark">✦</span> Gravitas</a>
+    <a class="nav__brand" href="/"><span class="nav__mark">✦</span> Quantum Rim</a>
     <div class="nav__links">
       <a href="#features">Features</a>
-      <a href="#physics">Physics</a>
-      <a href="#scenarios">Scenarios</a>
-      <a class="nav__cta" href="/simulation">Launch Simulator →</a>
+      <a href="#quantum">Quantum layer</a>
+      <a href="#expeditions">Expeditions</a>
+      <a class="nav__cta" href="/simulation.html">Enter Command →</a>
     </div>
   </nav>
 
@@ -35,22 +35,21 @@
     <canvas class="hero__canvas" id="hero-canvas" aria-hidden="true"></canvas>
 
     <div class="hero__content">
-      <span class="hero__eyebrow reveal">RK4 physics · Full 3D · WebGL post-processing</span>
-      <h1 class="hero__title reveal">Gravity doesn't<br /><span class="grad">ask permission.</span></h1>
+      <span class="hero__eyebrow reveal">Classical state · Quantum variation · Persistent consequences</span>
+      <h1 class="hero__title reveal">Govern worlds.<br /><span class="grad">Survive the impossible.</span></h1>
       <p class="hero__lead reveal">
-        Gravitas is a cinematic, physically-accurate 3D gravitational N-body simulator
-        that runs entirely in your browser. Watch stars, planets, black holes and
-        asteroids weave through inclined, chaotic orbits — with tidal disruption,
-        accretion disks, Lagrange points and Doppler shifts, in real time.
+        Rule a living galaxy from an Imperial emergency console. Inspect planets,
+        balance scarce resources, contain stellar disasters, explore ancient ruins,
+        and decide which worlds can be saved.
       </p>
       <div class="hero__actions reveal">
-        <a class="btn btn--primary" href="/simulation">Launch the Simulator</a>
-        <a class="btn btn--ghost" href="#features">Explore the physics</a>
+        <a class="btn btn--primary" href="/simulation.html">Enter Galactic Command</a>
+        <a class="btn btn--ghost" href="#features">See the command loop</a>
       </div>
       <div class="hero__stats reveal">
-        <div><b data-count="15">0</b><span>preset scenarios</span></div>
-        <div><b data-count="4">0</b><span>order RK4 integrator</span></div>
-        <div><b data-count="3">0</b><span>full dimensions</span></div>
+        <div><b data-count="8">0</b><span>persistent systems</span></div>
+        <div><b data-count="20">0</b><span>emergency activities</span></div>
+        <div><b data-count="6">0</b><span>Atlas engine roles</span></div>
       </div>
     </div>
     <a class="hero__scroll" href="#features" aria-label="Scroll"><span></span></a>
@@ -58,98 +57,98 @@
 
   <section class="section" id="features">
     <div class="section__head reveal">
-      <p class="kicker">The universe, in a tab</p>
-      <h2>No approximations. Just raw gravity.</h2>
-      <p class="sub">Every body pulls on every other across all three axes, integrated
-        with adaptive-substep RK4 and rendered through a photoreal WebGL pipeline.</p>
+      <p class="kicker">A galaxy under pressure</p>
+      <h2>Every warning becomes a decision.</h2>
+      <p class="sub">Risks build from real settlement, route, defense, and planetary state.
+        Your response changes the economy, the population, the map, and what happens next.</p>
     </div>
 
     <div class="grid">
       <article class="card card--wide reveal">
         <div class="card__media" style="background-image:url('/media/feature-blackhole.jpg')"></div>
         <div class="card__body">
-          <h3>Black holes & accretion disks</h3>
-          <p>Event horizons, glowing photon rings and 1,500-particle Keplerian accretion
-            disks. Massive bodies bend the paths of everything around them.</p>
+          <h3>Galaxy-first strategic command</h3>
+          <p>Move between the Core Worlds, Inner Rim, and dangerous frontier. Inspect every
+            system, planet, settlement, trade route, warning, and persistent history entry.</p>
         </div>
       </article>
 
       <article class="card reveal">
-        <div class="card__icon">🌀</div>
-        <h3>Tidal disruption</h3>
-        <p>Cross the Roche limit and a body shreds into an orbiting ring of debris.</p>
+        <div class="card__icon">⚠</div>
+        <h3>Emergency activities</h3>
+        <p>Align magnetic fields, route evacuations, intercept asteroids, decode signals, and contain anomalies.</p>
       </article>
 
       <article class="card reveal">
-        <div class="card__icon">🔥</div>
-        <h3>Tidal heating</h3>
-        <p>Bodies near massive neighbors glow with volcanic, magma-hued surfaces.</p>
+        <div class="card__icon">◎</div>
+        <h3>Persistent planets</h3>
+        <p>Population, stability, infrastructure, storage, appearance, and history survive every decision.</p>
       </article>
 
       <article class="card reveal">
-        <div class="card__icon">📍</div>
-        <h3>Lagrange points</h3>
-        <p>L1–L5 computed and visualized in full 3D for the two dominant bodies.</p>
+        <div class="card__icon">¤</div>
+        <h3>Legible economy</h3>
+        <p>Credits, food, water, energy, alloys, and exotic matter respond to production, scarcity, danger, and access.</p>
       </article>
 
       <article class="card card--wide reveal">
         <div class="card__media card__media--sm" style="background-image:url('/media/feature-orbits.jpg')"></div>
         <div class="card__body">
-          <h3>True 3D orbital mechanics</h3>
-          <p>Inclined, eccentric, precessing orbits — not flat circles. Fling new bodies
-            into the scene, track the center of mass, and watch energy conserve live.</p>
+          <h3>Consequences, not cutscenes</h3>
+          <p>Response quality changes casualties, settlement health, infrastructure,
+            defenses, route capacity, political stability, and future opportunities.</p>
         </div>
       </article>
 
       <article class="card reveal">
-        <div class="card__icon">🎬</div>
-        <h3>Cinematic rendering</h3>
-        <p>HDR bloom, vignette and ACES filmic tone mapping for a filmic look.</p>
+        <div class="card__icon">◈</div>
+        <h3>Optional system simulation</h3>
+        <p>Drop into the Three.js celestial view for collisions, black holes, orbital dynamics, and cinematic event staging.</p>
       </article>
     </div>
   </section>
 
-  <section class="engine" id="physics">
+  <section class="engine" id="quantum">
     <div class="engine__inner reveal">
-      <p class="kicker">The physics</p>
-      <h2>Solved properly, every frame.</h2>
+      <p class="kicker">The quantum boundary</p>
+      <h2>Distinctive uncertainty. Fair rules.</h2>
       <div class="engine__grid">
-        <div><b>RK4 + substep</b><span>4th-order integration, adaptive sub-stepping</span></div>
-        <div><b>O(n²) gravity</b><span>Exact pairwise forces with softening</span></div>
-        <div><b>Energy tracked</b><span>Kinetic, potential & momentum, live</span></div>
-        <div><b>Collisions</b><span>Momentum-conserving merge or elastic bounce</span></div>
-        <div><b>Doppler shift</b><span>Radial-velocity color shift on every body</span></div>
-        <div><b>Custom GLSL</b><span>Procedural star, gas-giant & rocky shaders</span></div>
+        <div><b>Coin Toss</b><span>Bounded crisis branches and uncertain discoveries</span></div>
+        <div><b>Labyrinth</b><span>Connected routes, affected districts, and ruin topology</span></div>
+        <div><b>Tessa Image</b><span>Long-term planetary transformations and atmosphere</span></div>
+        <div><b>Blur</b><span>Impact, storm, radiation, and lensing aftermath</span></div>
+        <div><b>Telablur</b><span>Paired worlds and linked anomaly states</span></div>
+        <div><b>Retrocausal Echo</b><span>Premonitions, clues, history, and event audio identity</span></div>
       </div>
     </div>
   </section>
 
-  <section class="showcase" id="scenarios">
+  <section class="showcase" id="expeditions">
     <div class="showcase__media" style="background-image:url('/media/showcase.jpg')"></div>
     <div class="showcase__scrim"></div>
     <div class="showcase__content reveal">
-      <h2>Fifteen scenarios.<br />Infinite chaos.</h2>
-      <p>Figure-8 choreography, the Kozai-Lidov effect, the Pythagorean three-body
-        problem, a mini solar system, a supermassive black hole — load one and watch.</p>
+      <h2>Map the ruins.<br />Bring something back.</h2>
+      <p>Labyrinth-assisted expeditions reveal connected chambers one decision at a time.
+        Assemble a crew, spend finite supplies, choose an approach, and carry every discovery back into the galaxy.</p>
       <div class="chips">
-        <span>Figure-8</span><span>Chaos Theory</span><span>Mini Solar System</span>
-        <span>Black Hole</span><span>Kozai-Lidov</span><span>Neutron Inspiral</span>
+        <span>Scout</span><span>Engineer</span><span>Scientist</span>
+        <span>Medic</span><span>Security</span><span>Diplomat</span>
       </div>
-      <a class="btn btn--primary" href="/simulation">Launch the Simulator</a>
+      <a class="btn btn--primary" href="/simulation.html">Launch an Expedition</a>
     </div>
   </section>
 
   <section class="cta reveal">
-    <h2>Load the Chaos preset.<br />See what happens.</h2>
-    <p>No install. No account. Just open the simulator and let gravity take over.</p>
-    <a class="btn btn--primary btn--lg" href="/simulation">Launch Gravitas →</a>
+    <h2>The next warning is already building.</h2>
+    <p>No install and no Atlas credential required for the complete offline strategic loop.</p>
+    <a class="btn btn--primary btn--lg" href="/simulation.html">Take Command →</a>
   </section>
 
   <footer class="footer">
-    <div class="footer__brand"><span class="nav__mark">✦</span> Gravitas</div>
-    <p class="footer__note">Built with React, Three.js &amp; a hand-written RK4 integrator.
-      Imagery via <a href="https://unsplash.com?utm_source=gravitas&utm_medium=referral" target="_blank" rel="noopener">Unsplash</a>.</p>
-    <p class="footer__copy">© <span id="year"></span> Gravitas. A browser-native gravitational simulator.</p>
+    <div class="footer__brand"><span class="nav__mark">✦</span> Quantum Rim</div>
+    <p class="footer__note">Built with React, Zustand, Three.js, FastAPI, OpenRouter, and Moth Atlas.
+      Imagery via <a href="https://unsplash.com?utm_source=quantum-rim&utm_medium=referral" target="_blank" rel="noopener">Unsplash</a>.</p>
+    <p class="footer__copy">© <span id="year"></span> Quantum Rim. A browser-native galactic civilization simulator.</p>
   </footer>
 
   <script type="module" src="/src/landing/landing.js"></script>

@@ -81,7 +81,7 @@ const LENS_FRAG = /* glsl */ `
  * of massive bodies and pass them to the shader each frame.
  */
 export function GravitationalLensing() {
-  const { gl, size, camera, scene } = useThree();
+  const { size, camera } = useThree();
   const quadRef = useRef();
 
   const renderTarget = useMemo(
@@ -89,7 +89,7 @@ export function GravitationalLensing() {
       format: THREE.RGBAFormat,
       type: THREE.UnsignedByteType,
     }),
-    [],
+    [size.height, size.width],
   );
 
   // Update render target size
@@ -122,7 +122,7 @@ export function GravitationalLensing() {
       depthWrite: false,
       transparent: false,
     });
-  }, []);
+  }, [lensMasses, lensPositions, size.height, size.width]);
 
   const _vec3 = useMemo(() => new THREE.Vector3(), []);
 

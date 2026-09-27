@@ -33,3 +33,6 @@ dist-ssr
 
 .vercel
 .env*
+
+# Local graphify knowledge graph
+graphify-out/

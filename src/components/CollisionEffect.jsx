@@ -15,7 +15,17 @@ import * as THREE from 'three';
 import { useSimStore, selectMergerEvents } from '../store/useSimStore';
 
 const DURATION = 2.4; // seconds (wall clock)
-const BURST_COUNT = 80;
+const BAND_COLOR = { graze: '#9fd7ff', battering: '#ffb45a', cataclysm: '#ff5a3c' };
+
+function bandColor(event) {
+  return BAND_COLOR[event.band] || BAND_COLOR.battering;
+}
+
+function burstCount(event) {
+  if (event.band === 'graze') return 40;
+  if (event.band === 'cataclysm') return 140;
+  return 80;
+}
 
 // Utility: uniform random direction on a unit sphere
 function randomSphereDir() {
@@ -47,7 +57,7 @@ function CoreFlash({ event }) {
   return (
     <mesh ref={meshRef} position={event.position}>
       <sphereGeometry args={[1, 16, 8]} />
-      <meshBasicMaterial color="#fffae0" transparent opacity={1.0}
+      <meshBasicMaterial color={bandColor(event)} transparent opacity={1.0}
         blending={THREE.AdditiveBlending} depthWrite={false} />
     </mesh>
   );
@@ -73,7 +83,7 @@ function ShockSphere({ event }) {
     <mesh ref={meshRef} position={event.position}>
       <sphereGeometry args={[1, 32, 16]} />
       {/* BackSide renders as an inward-facing shell — looks like a bubble */}
-      <meshBasicMaterial color="#ffffff" transparent opacity={0.65}
+      <meshBasicMaterial color={bandColor(event)} transparent opacity={0.65}
         side={THREE.BackSide} blending={THREE.AdditiveBlending} depthWrite={false} />
     </mesh>
   );
@@ -118,12 +128,12 @@ function ParticleBurst({ event }) {
   // Generate per-particle velocity vectors once (uniform sphere distribution)
   const particles = useMemo(() => {
     const speedScale = Math.min(event.mass * 0.6 + 0.8, 3.0);
-    return Array.from({ length: BURST_COUNT }, () => {
+    return Array.from({ length: burstCount(event) }, () => {
       const [dx, dy, dz] = randomSphereDir();
       const speed = (0.4 + Math.random() * 0.6) * speedScale;
       return { dx: dx * speed, dy: dy * speed, dz: dz * speed };
     });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [event]);
 
   const dummy = useMemo(() => new THREE.Object3D(), []);
 
@@ -152,9 +162,9 @@ function ParticleBurst({ event }) {
 
   if (dead) return null;
   return (
-    <instancedMesh ref={meshRef} args={[undefined, undefined, BURST_COUNT]}>
+    <instancedMesh ref={meshRef} args={[undefined, undefined, particles.length]}>
       <sphereGeometry args={[1, 5, 4]} />
-      <meshBasicMaterial color="#ffaa44" transparent opacity={0.95}
+      <meshBasicMaterial color={bandColor(event)} transparent opacity={0.95}
         blending={THREE.AdditiveBlending} depthWrite={false} />
     </instancedMesh>
   );

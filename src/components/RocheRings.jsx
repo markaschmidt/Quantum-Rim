@@ -6,7 +6,7 @@
  * primary body, forming a planetary ring.
  */
 
-import { useRef, useMemo, useState, useEffect } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useSimStore } from '../store/useSimStore';

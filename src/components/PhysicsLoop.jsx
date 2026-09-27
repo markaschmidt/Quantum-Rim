@@ -7,15 +7,10 @@
  */
 
 import { useFrame } from '@react-three/fiber';
-import { useRef } from 'react';
 import { useSimStore } from '../store/useSimStore';
 import { audioEngine } from '../utils/audio';
 
 export function PhysicsLoop() {
-  const tickRef = useRef(useSimStore.getState().tick);
-  const accumulator = useRef(0);
-
-  // Keep ref to tick to avoid stale closure
   useFrame((state, delta) => {
     const store = useSimStore.getState();
 

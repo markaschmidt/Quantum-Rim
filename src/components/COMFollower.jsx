@@ -5,15 +5,13 @@
  * When enabled, smoothly interpolates the controls target toward the COM.
  */
 
-import { useFrame, useThree } from '@react-three/fiber';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useSimStore } from '../store/useSimStore';
 
 const _target = new THREE.Vector3();
 
 export function COMFollower({ enabled }) {
-  const { camera } = useThree();
-
   useFrame((state) => {
     if (!enabled) return;
     const { bodies } = useSimStore.getState();

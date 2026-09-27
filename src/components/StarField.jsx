@@ -101,7 +101,7 @@ function StarLayer({ layerData }) {
     geo.setAttribute('size',     new THREE.BufferAttribute(sizes.slice(),     1));
     geo.setAttribute('color',    new THREE.BufferAttribute(colors.slice(),    3));
     return geo;
-  }, []);
+  }, [colors, positions, sizes]);
 
   const material = useMemo(
     () =>

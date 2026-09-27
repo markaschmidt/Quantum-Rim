@@ -5,7 +5,7 @@
  * Also wires up all the non-camera hotkeys.
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useSimStore } from '../store/useSimStore';
 
 const SHORTCUTS = [

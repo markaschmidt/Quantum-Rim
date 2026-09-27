@@ -1,21 +1,16 @@
 {
-  "name": "gravitas",
+  "name": "quantum-rim",
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Gravitas — a cinematic, physically-accurate 3D gravitational N-body simulator in the browser. RK4 physics, tidal disruption, accretion disks, Lagrange points and 15 preset scenarios.",
+  "description": "Quantum Rim — a browser-based galaxy civilization simulator with quantum-assisted crises and exploration.",
   "license": "MIT",
-  "author": "Shahriar Ahmed",
-  "homepage": "https://github.com/shahriar-ahmed-seam/gravitas",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/shahriar-ahmed-seam/gravitas.git"
-  },
+  "author": "Quantum Rim contributors",
   "keywords": [
-    "n-body",
-    "gravity",
-    "physics-simulation",
-    "orbital-mechanics",
+    "galaxy-simulation",
+    "civilization-simulator",
+    "quantum-computing",
+    "strategy-game",
     "3d",
     "threejs",
     "react-three-fiber",
@@ -28,6 +23,7 @@
     "dev": "vite",
     "prebuild": "node scripts/fetch-images.mjs",
     "build": "vite build",
+    "test": "node --test",
     "lint": "eslint .",
     "preview": "vite preview --port 4173"
   },
@@ -44,9 +40,14 @@
     "zustand": "^5.0.1"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",
+    "eslint": "^10.11.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "globals": "^17.12.0",
     "vite": "^5.4.10"
   }
 }

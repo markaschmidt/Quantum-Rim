@@ -36,7 +36,7 @@ function circOrbV(centerMass, r) {
  * The orbit lies in a plane defined by (inc, ascNode).
  * theta=0 puts the body along the ascending node direction.
  */
-function circOrb3D(centerMass, r, theta, inc = 0, ascNode = 0) {
+export function circOrb3D(centerMass, r, theta, inc = 0, ascNode = 0) {
   const v = Math.sqrt(centerMass / r);
 
   // Position in the orbital plane (orbital frame: x,y)

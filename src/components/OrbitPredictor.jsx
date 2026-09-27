@@ -6,7 +6,7 @@
  * Unlike trails which show history, these show the future.
  */
 
-import { useRef, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useSimStore } from '../store/useSimStore';
@@ -57,7 +57,7 @@ function predictOrbits(bodies, steps, dt) {
 function PredictionLine({ points, color }) {
   const lineRef = useRef();
 
-  const { geo, mat, line } = useMemo(() => {
+  const { geo, line } = useMemo(() => {
     const maxPts = Math.ceil(PREDICTION_STEPS / 3) + 2;
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(maxPts * 3), 3));
@@ -74,11 +74,11 @@ function PredictionLine({ points, color }) {
 
     const l = new THREE.Line(g, m);
     l.frustumCulled = false;
-    return { geo: g, mat: m, line: l };
+    return { geo: g, line: l };
   }, [color]);
 
   // Update geometry when points change
-  useMemo(() => {
+  useEffect(() => {
     if (!points || points.length < 2) {
       geo.setDrawRange(0, 0);
       return;

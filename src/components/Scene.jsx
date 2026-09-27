@@ -16,7 +16,7 @@
  * to spawn a new body with the drag vector as initial velocity.
  */
 
-import { useRef, useCallback, useEffect, useState } from 'react';
+import { useRef, useCallback, useEffect } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 
@@ -205,15 +205,7 @@ function SceneContent() {
 // ── PostFX with built-in crash isolation ──────────────────────────────────────
 // If EffectComposer throws (GPU/driver issues), scene still renders without FX.
 function SafePostFX() {
-  const [crashed, setCrashed] = useState(false);
-  if (crashed) return null;
-  try {
-    // The PostFX component itself is rendered inside Canvas's own error handling
-    return <PostFX />;
-  } catch {
-    setCrashed(true);
-    return null;
-  }
+  return <PostFX />;
 }
 
 // ── Exported Scene component ──────────────────────────────────────────────────

@@ -130,11 +130,6 @@ export function computeLagrangePoints(bodyA, bodyB) {
     px = cx / cl; py = cy / cl; pz = cz / cl;
   }
 
-  // Center of mass
-  const cx = (bodyA.mass * x1 + bodyB.mass * x2) / M;
-  const cy2 = (bodyA.mass * y1 + bodyB.mass * y2) / M;
-  const cz2 = (bodyA.mass * z1 + bodyB.mass * z2) / M;
-
   // L1: between the two bodies (closer to smaller body)
   const L1 = [x2 - rHill * ux, y2 - rHill * uy, z2 - rHill * uz];
 

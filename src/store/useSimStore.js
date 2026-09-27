@@ -11,23 +11,18 @@ import { subscribeWithSelector } from 'zustand/middleware';
 import { getScenario, SCENARIO_LIST } from '../presets/scenarios';
 import { integrateStep } from '../physics/integrator';
 import { processCollisions } from '../physics/collision';
+import { relaxOrbitKicks } from '../physics/impact.js';
 import { computeEnergies } from '../physics/gravity';
-import { checkRocheDisruptions, generateRingParticles } from '../physics/roche';
+import { checkRocheDisruptions } from '../physics/roche';
 import { pushStateToURL, loadStateFromURL } from '../utils/urlState';
+import { decorateBody } from '../game/planetProfile';
+import { massToRadius } from '../physics/bodyScale.js';
+
+export { massToRadius };
 
 const TRAIL_MAX_POINTS = 400;
 const TRAIL_SAMPLE_DISTANCE = 0.02; // minimum world-space distance between trail points
 const ROCHE_DISSOLVE_DURATION = 2.0; // sim-time seconds for dissolve animation
-
-/** Compute visual radius from mass and type */
-export function massToRadius(mass, type) {
-  if (type === 'star')      return Math.max(0.15, Math.cbrt(mass) * 0.28);
-  if (type === 'gas_giant') return Math.max(0.10, Math.cbrt(mass) * 0.55);
-  if (type === 'rocky')     return Math.max(0.05, Math.cbrt(mass) * 0.60);
-  if (type === 'moon')      return Math.max(0.03, Math.cbrt(mass) * 0.55);
-  if (type === 'black_hole') return Math.max(0.12, Math.cbrt(mass) * 0.15);
-  return Math.max(0.06, Math.cbrt(mass) * 0.4);
-}
 
 // ──────────────────────────────────────────
 // Load any URL-baked scenario first
@@ -36,13 +31,13 @@ const urlState = loadStateFromURL();
 const defaultScenario = getScenario('figure8');
 
 function prepBodies(rawBodies) {
-  return rawBodies.map((b) => ({
-    ...b,
-    radius: b.radius ?? massToRadius(b.mass, b.type),
-    trail: b.trail ?? [],
-    isAlive: b.isAlive !== false,
-    mergedInto: b.mergedInto ?? null,
-  }));
+  return rawBodies.map((b) => decorateBody({
+      ...b,
+      radius: b.radius ?? massToRadius(b.mass, b.type),
+      trail: b.trail ?? [],
+      isAlive: b.isAlive !== false,
+      mergedInto: b.mergedInto ?? null,
+    }));
 }
 
 const initialBodies = prepBodies(
@@ -64,6 +59,7 @@ export const useSimStore = create(
 
     // ── Selection ───────────────────────────
     selectedBodyId: null,
+    inspectionBodyId: null,
 
     // ── Physics settings ──────────────────────
     collisionMode: defaultScenario.collisionMode ?? 'merge',
@@ -96,6 +92,7 @@ export const useSimStore = create(
 
     // ── Current scenario ──────────────────────
     currentScenarioId: urlState ? null : 'figure8',
+    customSystemLabel: null,
 
     // ═══════════════════════════════════════════
     // ACTIONS
@@ -116,7 +113,7 @@ export const useSimStore = create(
       const integrated = integrateStep(bodies, dt);
 
       // 2. Collision detection + resolution
-      const { newBodies, mergerEvents, deadIds } = processCollisions(integrated, collisionMode);
+      const { newBodies, mergerEvents } = processCollisions(integrated, collisionMode);
 
       // 3. Update trails
       const withTrails = newBodies.map((b) => {
@@ -156,6 +153,11 @@ export const useSimStore = create(
         position: e.position,
         mass: e.mass,
         impactSpeed: e.impactSpeed,
+        band: e.band || 'cataclysm',
+        severity: e.severity ?? 1,
+        debrisCount: e.debrisCount || 0,
+        permanent: Boolean(e.permanent),
+        bodyIds: e.bodyIds || [],
         time: simTime,
       }));
 
@@ -199,6 +201,8 @@ export const useSimStore = create(
         (e) => simTime - e.time < 30,
       );
 
+      finalBodies = relaxOrbitKicks(finalBodies, dt);
+
       set({
         bodies: finalBodies,
         simTime: simTime + dt,
@@ -220,7 +224,21 @@ export const useSimStore = create(
 
     // ── Selection ────────────────────────────
     selectBody(id) {
-      set({ selectedBodyId: id });
+      const body = get().bodies.find((candidate) => candidate.id === id);
+      const inspectable = body && ['rocky', 'moon', 'gas_giant'].includes(body.type);
+      set({
+        selectedBodyId: id,
+        inspectionBodyId: inspectable ? id : null,
+      });
+    },
+
+    openInspection(id) {
+      const body = get().bodies.find((candidate) => candidate.id === id);
+      if (body) set({ selectedBodyId: id, inspectionBodyId: id });
+    },
+
+    closeInspection() {
+      set({ inspectionBodyId: null });
     },
 
     // ── Scenario management ──────────────────
@@ -233,23 +251,43 @@ export const useSimStore = create(
         timeScale: scenario.timeScale ?? 0.3,
         collisionMode: scenario.collisionMode ?? 'merge',
         selectedBodyId: null,
+        inspectionBodyId: null,
         mergerEvents: [],
         rocheEvents: [],
         energyHistory: [],
         currentScenarioId: scenarioId,
+        customSystemLabel: null,
+        isPaused: false,
+      });
+    },
+
+    loadCustomSystem(rawBodies, label = 'Forged system') {
+      set({
+        bodies: prepBodies(rawBodies),
+        simTime: 0,
+        timeScale: 0.8,
+        collisionMode: 'merge',
+        selectedBodyId: null,
+        inspectionBodyId: null,
+        mergerEvents: [],
+        rocheEvents: [],
+        energyHistory: [],
+        currentScenarioId: null,
+        customSystemLabel: label,
+        rocheEnabled: false,
         isPaused: false,
       });
     },
 
     // ── Add a new body programmatically ──────
     addBody(bodyDef) {
-      const newBody = {
+      const newBody = decorateBody({
         ...bodyDef,
         radius: bodyDef.radius ?? massToRadius(bodyDef.mass, bodyDef.type),
         trail: [],
         isAlive: true,
         mergedInto: null,
-      };
+      });
       set((s) => ({ bodies: [...s.bodies, newBody] }));
     },
 
@@ -258,6 +296,7 @@ export const useSimStore = create(
       set((s) => ({
         bodies: s.bodies.filter((b) => b.id !== id),
         selectedBodyId: s.selectedBodyId === id ? null : s.selectedBodyId,
+        inspectionBodyId: s.inspectionBodyId === id ? null : s.inspectionBodyId,
       }));
     },
 

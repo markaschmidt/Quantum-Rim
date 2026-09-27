@@ -7,6 +7,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useSimStore } from '../store/useSimStore';
+import { decorateBody } from '../game/planetProfile';
 
 export function BodyEditor() {
   const body = useSimStore(
@@ -29,7 +30,7 @@ export function BodyEditor() {
     const newBodies = store.bodies.map((b) => {
       if (b.id !== body.id) return b;
       const newMass = Math.max(0.001, body.mass * massScale);
-      return { ...b, mass: newMass };
+      return decorateBody({ ...b, mass: newMass, profile: null });
     });
     useSimStore.setState({ bodies: newBodies });
   }, [body, massScale]);
@@ -60,7 +61,7 @@ export function BodyEditor() {
     // Reduce original mass
     const newBodies = store.bodies.map((b) => {
       if (b.id !== body.id) return b;
-      return { ...b, mass: halfMass };
+      return decorateBody({ ...b, mass: halfMass, radius: b.radius * Math.cbrt(0.5), profile: null });
     });
 
     // Add fragment
@@ -69,6 +70,7 @@ export function BodyEditor() {
       name: `${body.name}-B`,
       type: body.type,
       mass: halfMass,
+      radius: body.radius * Math.cbrt(0.5),
       color: body.color,
       position: [
         body.position[0] + offset,
@@ -85,7 +87,8 @@ export function BodyEditor() {
       mergedInto: null,
     };
 
-    useSimStore.setState({ bodies: [...newBodies, fragment] });
+    useSimStore.setState({ bodies: newBodies });
+    useSimStore.getState().addBody(fragment);
   }, [body]);
 
   if (!body) return null;

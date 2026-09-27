@@ -8,6 +8,7 @@
 
 import { useRef, useMemo, memo } from 'react';
 import { useFrame } from '@react-three/fiber';
+import { ARCHETYPE_INDEX } from '../game/worldCatalog.js';
 import * as THREE from 'three';
 import { useSimStore } from '../store/useSimStore';
 
@@ -129,6 +130,35 @@ const starFrag = /* glsl */`
   }
 `;
 
+const SURFACE_FINISH = /* glsl */`
+  uniform float uArchetype;
+  uniform float uScar;
+  uniform float uHasMap;
+  uniform sampler2D uMap;
+  vec3 finishSurface(vec3 col, vec3 p, vec2 uv) {
+    if (uHasMap > 0.5) {
+      vec3 mapCol = texture2D(uMap, uv).rgb;
+      col = mix(col, col * mapCol * 1.35, 0.72);
+    }
+    if (uArchetype > 0.5 && uArchetype < 1.5) {
+      float vein = smoothstep(0.55, 0.82, fbm(p * 5.0, 3));
+      col = mix(col, vec3(1.0, 0.22, 0.02), vein * 0.9);
+    } else if (uArchetype > 1.5 && uArchetype < 2.5) {
+      float shine = pow(max(dot(normalize(vNormal), normalize(vec3(1.0, 0.4, 1.2))), 0.0), 24.0);
+      col += vec3(0.45, 0.62, 0.85) * shine * 0.55;
+    } else if (uArchetype > 4.5 && uArchetype < 5.5) {
+      float spark = step(0.86, fbm(p * 9.0, 2));
+      col += vec3(0.7, 0.85, 1.0) * spark;
+    } else if (uArchetype > 6.5 && uArchetype < 7.5) {
+      float storm = sin(uv.y * 28.0 + fbm(p, 2) * 2.0);
+      col = mix(col, col * vec3(0.72, 0.86, 1.05), smoothstep(0.2, 0.8, storm) * 0.35);
+    }
+    float burn = uScar * smoothstep(0.42, 0.8, fbm(p * 7.0 + 3.0, 3));
+    col = mix(col, vec3(0.16, 0.07, 0.04), clamp(burn, 0.0, 0.85));
+    return col;
+  }
+`;
+
 // ─── GAS GIANT shader ──────────────────────────────────────────────────────────
 const gasVert = /* glsl */`
   varying vec2 vUv;
@@ -144,6 +174,7 @@ const gasVert = /* glsl */`
 
 const gasFrag = /* glsl */`
   ${NOISE_GLSL}
+  ${SURFACE_FINISH}
   uniform float uTime;
   uniform vec3  uColor;
   uniform float uTidalHeat;
@@ -189,6 +220,7 @@ const gasFrag = /* glsl */`
       }
     }
 
+    col = finishSurface(col, p, vUv);
     gl_FragColor = vec4(col, 1.0);
   }
 `;
@@ -208,6 +240,7 @@ const rockyVert = /* glsl */`
 
 const rockyFrag = /* glsl */`
   ${NOISE_GLSL}
+  ${SURFACE_FINISH}
   uniform float uTime;
   uniform vec3  uColor;
   uniform float uTidalHeat;
@@ -276,15 +309,33 @@ const rockyFrag = /* glsl */`
       }
     }
 
+    col = finishSurface(col, p, vUv);
     gl_FragColor = vec4(col, 1.0);
   }
 `;
 
 // ─── Component ─────────────────────────────────────────────────────────────────
+function blankMap() {
+  const data = new Uint8Array([255, 255, 255, 255]);
+  const texture = new THREE.DataTexture(data, 1, 1);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function surfaceUniforms() {
+  return {
+    uArchetype: { value: 0 },
+    uScar: { value: 0 },
+    uHasMap: { value: 0 },
+    uMap: { value: blankMap() },
+  };
+}
+
 export const Body = memo(function Body({ bodyId, type, color, radius, isSelected, onClick }) {
   const meshRef  = useRef();
   const lightRef = useRef();
   const timeRef  = useRef(0);
+  const textureUrlRef = useRef(null);
 
   const material = useMemo(() => {
     const baseColor = new THREE.Color(color);
@@ -307,6 +358,7 @@ export const Body = memo(function Body({ bodyId, type, color, radius, isSelected
           uColor: { value: baseColor },
           uTidalHeat: { value: 0.0 },
           uDissolve: { value: 0.0 },
+          ...surfaceUniforms(),
         },
       });
     }
@@ -317,6 +369,7 @@ export const Body = memo(function Body({ bodyId, type, color, radius, isSelected
         uColor: { value: baseColor },
         uTidalHeat: { value: 0.0 },
         uDissolve: { value: 0.0 },
+        ...surfaceUniforms(),
       },
     });
   }, [type, color]);
@@ -334,6 +387,24 @@ export const Body = memo(function Body({ bodyId, type, color, radius, isSelected
     }
     meshRef.current.visible = true;
     meshRef.current.position.set(...body.position);
+    if (material.uniforms?.uArchetype) {
+      material.uniforms.uArchetype.value = ARCHETYPE_INDEX[body.archetype] || 0;
+    }
+    if (material.uniforms?.uScar) {
+      material.uniforms.uScar.value = body.scar || 0;
+    }
+    if (material.uniforms?.uMap && body.textureUrl && body.textureUrl !== textureUrlRef.current) {
+      textureUrlRef.current = body.textureUrl;
+      const loader = new THREE.TextureLoader();
+      loader.setCrossOrigin('anonymous');
+      loader.load(body.textureUrl, (texture) => {
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        material.uniforms.uMap.value = texture;
+        material.uniforms.uHasMap.value = 1;
+      });
+    }
 
     // ── Roche dissolve animation ───────────────────────────────────────
     let dissolveScale = 1;

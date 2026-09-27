@@ -24,6 +24,20 @@ export default defineConfig([
     },
     rules: {
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      // React Three Fiber animation loops intentionally mutate refs and Three.js
+      // objects outside React state. These compiler-oriented rules do not model
+      // that imperative render-loop boundary.
+      'react-hooks/purity': 'off',
+      'react-hooks/immutability': 'off',
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/error-boundaries': 'off',
+      'react-refresh/only-export-components': 'off',
+    },
+  },
+  {
+    files: ['vite.config.js', 'scripts/**/*.mjs', 'test/**/*.js'],
+    languageOptions: {
+      globals: globals.node,
     },
   },
 ])

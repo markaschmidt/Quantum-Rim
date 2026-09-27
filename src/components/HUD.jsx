@@ -14,7 +14,7 @@ import { EnergyGraph } from './EnergyGraph';
 import { MiniMap } from './MiniMap';
 import { FPSCounter } from './FPSCounter';
 import { BodyEditor } from './BodyEditor';
-import { TimeRewindControls, useTimeRewind } from './TimeRewind';
+import { TimeRewindControls } from './TimeRewind';
 import { recordCanvas } from '../utils/videoExport';
 import { takeScreenshot } from '../utils/screenshot';
 import { audioEngine } from '../utils/audio';
@@ -29,7 +29,6 @@ function BodyList() {
   const bodies        = useSimStore((s) => s.bodies);
   const selectedId    = useSimStore((s) => s.selectedBodyId);
   const selectBody    = useSimStore((s) => s.selectBody);
-  const removeBody    = useSimStore((s) => s.removeBody);
   const alive         = bodies.filter((b) => b.isAlive);
 
   return (
@@ -67,6 +66,7 @@ function BodyList() {
 function BodyPanel() {
   const body  = useSimStore((s) => s.bodies.find((b) => b.id === s.selectedBodyId) ?? null);
   const bodies = useSimStore((s) => s.bodies);
+  const openInspection = useSimStore((s) => s.openInspection);
 
   if (!body) return (
     <div className="hud-panel" style={{ minWidth: 180 }}>
@@ -126,6 +126,11 @@ function BodyPanel() {
         <span><label>NN Dist</label></span>
         <span className="value">{nearestDist === Infinity ? '—' : fmt(nearestDist)}</span>
       </div>
+      {body.profile && (
+        <button className="hud-btn" style={{ marginTop: 9, width: '100%' }} onClick={() => openInspection(body.id)}>
+          Open Imperial Registry
+        </button>
+      )}
     </div>
   );
 }
@@ -136,6 +141,7 @@ function TimeControls() {
   const timeScale     = useSimStore((s) => s.timeScale);
   const simTime       = useSimStore((s) => s.simTime);
   const currentId     = useSimStore((s) => s.currentScenarioId);
+  const customLabel   = useSimStore((s) => s.customSystemLabel);
   const togglePause   = useSimStore((s) => s.togglePause);
   const setTimeScale  = useSimStore((s) => s.setTimeScale);
   const loadScenario  = useSimStore((s) => s.loadScenario);
@@ -172,11 +178,14 @@ function TimeControls() {
       <div style={{ marginBottom: 8 }}>
         <label>SCENARIO</label>
         <select
-          value={currentId ?? ''}
-          onChange={(e) => loadScenario(e.target.value)}
+          value={currentId ?? (customLabel ? '__forged__' : '')}
+          onChange={(e) => {
+            if (e.target.value !== '__forged__') loadScenario(e.target.value);
+          }}
           style={{ marginTop: 4 }}
         >
           <option value="" disabled>— Select —</option>
+          {customLabel && <option value="__forged__">{customLabel}</option>}
           {SCENARIO_LIST.map((s) => (
             <option key={s.id} value={s.id}>{s.name}</option>
           ))}
@@ -228,7 +237,7 @@ function Toolbar({ canvasRef }) {
     if (!canvasRef?.current) return;
     try {
       await recordCanvas(canvasRef.current, 10000);
-    } catch (e) {
+    } catch {
       alert('Video export is not supported in this browser.');
     }
   }, [canvasRef]);

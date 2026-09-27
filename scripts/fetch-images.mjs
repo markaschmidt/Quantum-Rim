@@ -1,5 +1,5 @@
 /**
- * Build-time image pipeline for Gravitas.
+ * Build-time image pipeline for Quantum Rim.
  *
  * Downloads cinematic, license-friendly imagery from the Unsplash API into
  * `public/media/`. The Unsplash Access Key is read from UNSPLASH_ACCESS_KEY and
@@ -66,8 +66,8 @@ async function main() {
     credits.push({
       file: `${asset.name}.jpg`,
       author: photo.user.name,
-      authorUrl: `${photo.user.links.html}?utm_source=gravitas&utm_medium=referral`,
-      source: `${photo.links.html}?utm_source=gravitas&utm_medium=referral`,
+      authorUrl: `${photo.user.links.html}?utm_source=quantum-rim&utm_medium=referral`,
+      source: `${photo.links.html}?utm_source=quantum-rim&utm_medium=referral`,
     });
     console.log(`${(bytes / 1024).toFixed(0)} KB`);
   }
