@@ -8,12 +8,14 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useSimStore } from '../store/useSimStore';
 import { decorateBody } from '../game/planetProfile';
+import { tuneQuasarJets } from '../game/starforge.js';
 
 export function BodyEditor() {
   const body = useSimStore(
     (s) => s.bodies.find((b) => b.id === s.selectedBodyId) ?? null,
   );
   const removeBody = useSimStore((s) => s.removeBody);
+  const setQuasar = useSimStore((s) => s.setQuasar);
 
   const [massScale, setMassScale] = useState(1);
   const [velScale, setVelScale] = useState(1);
@@ -85,6 +87,7 @@ export function BodyEditor() {
       trail: [],
       isAlive: true,
       mergedInto: null,
+      freshUntil: Date.now() + 60000,
     };
 
     useSimStore.setState({ bodies: newBodies });
@@ -140,6 +143,24 @@ export function BodyEditor() {
           Apply Velocity
         </button>
       </div>
+
+      {body.quasar && (
+        <div style={{ marginBottom: 10 }}>
+          <label>JET POWER &nbsp;<span className="value accent">{body.quasar.power.toFixed(2)}</span></label>
+          <input type="range" min={0.4} max={2.6} step={0.05} value={body.quasar.power} onChange={(event) => setQuasar(body.id, { power: Number(event.target.value) })} />
+          <label>OPENING &nbsp;<span className="value accent">{body.quasar.opening.toFixed(2)}</span></label>
+          <input type="range" min={0.04} max={0.9} step={0.02} value={body.quasar.opening} onChange={(event) => setQuasar(body.id, { opening: Number(event.target.value) })} />
+          <label>SPONTANEITY &nbsp;<span className="value accent">{body.quasar.spontaneity.toFixed(2)}</span></label>
+          <input type="range" min={0.05} max={0.95} step={0.02} value={body.quasar.spontaneity} onChange={(event) => setQuasar(body.id, { spontaneity: Number(event.target.value) })} />
+          <button
+            className="hud-btn"
+            style={{ marginTop: 4, width: '100%' }}
+            onClick={async () => setQuasar(body.id, await tuneQuasarJets(`${body.id}:${Date.now()}`))}
+          >
+            Retune jets
+          </button>
+        </div>
+      )}
 
       <hr className="hud-sep" />
 

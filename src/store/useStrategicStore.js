@@ -3,14 +3,39 @@ import { persist } from 'zustand/middleware';
 
 import { activitiesForCrisis, ACTIVITIES_BY_ID } from '../game/activities.js';
 import { createGalaxySeed, findPlanet } from '../game/galaxySeed.js';
+import { ensureDeposits } from '../game/deposits.js';
+import { cometPathFromLanes, ensureComets, tickComets } from '../game/galaxyChart.js';
+import { enemyPosition, tickIncursions } from '../game/incursions.js';
+import {
+  accrueSiteStock,
+  buildOffer,
+  completeDevBuilds,
+  HAULERS,
+  miningYield,
+  missingRequirement,
+  tickSites,
+  transitCycles,
+} from '../game/facilities.js';
+import { devBuildClockEnabled, limitBuildMs } from '../game/devBuildClock.js';
 import { commitDraftToGalaxy, sanitizeBodyName } from '../game/systemForge.js';
 import { connectedNodeIds, EXPEDITION_APPROACHES } from '../game/expeditions.js';
 import {
   DEFAULT_COMMODITIES,
   applyResourceTransaction,
+  migrateCommodityBag,
   advanceSettlementEconomy,
   calculateCrisisLoss,
 } from '../game/resources.js';
+import { accrueSystemTaxes } from '../game/taxes.js';
+import { resolveCachedTexture, scrubBlobUrls } from '../game/textureCache.js';
+import {
+  emptyWorks,
+  FACILITIES,
+  facilityOffer,
+  operationRelief,
+  SKILL_TREE,
+  skillOffer,
+} from '../game/imperialWorks.js';
 
 const CRISIS_TITLES = {
   'magnetic-pole-shift': 'Magnetic Pole Destabilization',
@@ -24,6 +49,7 @@ const CRISIS_TITLES = {
   'colony-unrest': 'Colony Unrest Escalation',
   'ruin-discovery': 'Outer Rim Ruin Signal',
   'quantum-anomaly': 'Quantum Anomaly Bloom',
+  'faction-incursion': 'Hostile Fleet Incursion',
 };
 
 const EVENT_ORDER = [
@@ -35,6 +61,7 @@ const EVENT_ORDER = [
   'colony-unrest',
   'ruin-discovery',
   'quantum-anomaly',
+  'faction-incursion',
 ];
 
 function hashUnit(value) {
@@ -84,7 +111,7 @@ export function riskForPlanet(galaxy, planet) {
   };
 }
 
-function chooseEventType(galaxy, planet, turn) {
+function chooseEventType(galaxy, planet, turn, sites = []) {
   const risk = riskForPlanet(galaxy, planet);
   const candidates = planet.type === 'black_hole'
     ? ['black-hole-entry', 'black-hole-collision', 'quantum-anomaly']
@@ -100,6 +127,7 @@ function chooseEventType(galaxy, planet, turn) {
       'colony-unrest': risk.instability + risk.scarcity + risk.population_exposure,
       'ruin-discovery': risk.anomaly + risk.frontier,
       'quantum-anomaly': risk.anomaly + risk.instability,
+      'faction-incursion': (risk.weak_defense + risk.route_exposure) * (1 - (operationRelief(null, planet.systemId, sites).invasion || 0)),
       'black-hole-entry': risk.nearby_black_hole,
       'black-hole-collision': risk.nearby_black_hole + risk.anomaly,
     }[eventType] || 0.2)),
@@ -139,13 +167,17 @@ function resolveEventState(state, event, performance, metadata = {}) {
   for (const [resource, amount] of Object.entries(metadata.resourceCost || {})) {
     loss.commodities[resource] = (loss.commodities[resource] || 0) - Math.max(0, Math.round(amount));
   }
+  const relief = operationRelief(state.imperialWorks, event.systemId, state.sites);
+  if (loss.credits < 0 && relief.loss > 0) {
+    loss.credits = Math.round(loss.credits * (1 - relief.loss));
+  }
   const transaction = applyResourceTransaction(state.treasury, loss);
   const exposure = event.severity * (1 - protection * 0.78);
   const populationPriority = metadata.priority === 'choice-0' ? 0.6
     : metadata.priority === 'choice-1' ? 1.3 : 1;
   const infrastructurePriority = metadata.priority === 'choice-1' ? 0.65
     : metadata.priority === 'choice-0' ? 1.25 : 1;
-  const populationLoss = Math.round((event.population || 0) * exposure * 0.08 * populationPriority);
+  const populationLoss = Math.round((event.population || 0) * exposure * 0.08 * populationPriority * (1 - relief.population));
   const outcome = protection >= 0.75
     ? 'Response contained the emergency with limited losses.'
     : protection >= 0.45
@@ -268,13 +300,52 @@ const initialGalaxy = createGalaxySeed();
 const firstSystem = Object.values(initialGalaxy.systems)[0];
 const firstPlanet = firstSystem.planets[0];
 
+function upgradeStrategicState(persisted) {
+  const treasury = persisted?.treasury || makeLedger();
+  const galaxy = ensureDeposits(persisted?.galaxy || createGalaxySeed());
+  for (const system of Object.values(galaxy.systems || {})) {
+    for (const planet of system.planets || []) {
+      for (const settlement of planet.settlements || []) {
+        settlement.storage = migrateCommodityBag(settlement.storage);
+        settlement.production = migrateCommodityBag(settlement.production);
+        settlement.consumption = migrateCommodityBag(settlement.consumption);
+      }
+    }
+  }
+  return {
+    ...persisted,
+    schemaVersion: 8,
+    galaxy,
+    treasury: { ...treasury, commodities: migrateCommodityBag(treasury.commodities) },
+    taxCoffers: persisted?.taxCoffers || {},
+    imperialWorks: persisted?.imperialWorks || emptyWorks(),
+    sites: persisted?.sites || [],
+    enemies: Array.isArray(persisted?.enemies) ? persisted.enemies : [],
+    comets: ensureComets(
+      Array.isArray(persisted?.comets) ? persisted.comets : [],
+      galaxy,
+      persisted?.strategicTurn || 0,
+    ),
+    events: persisted?.events || [],
+    expeditions: persisted?.expeditions || [],
+    auditLog: persisted?.auditLog || [],
+    strategicTurn: persisted?.strategicTurn || 0,
+    forgeDraft: persisted?.forgeDraft || null,
+  };
+}
+
 export const useStrategicStore = create(
   persist(
     (set, get) => ({
-      schemaVersion: 4,
+      schemaVersion: 8,
       galaxy: initialGalaxy,
+      sites: [],
+      enemies: [],
+      comets: ensureComets([], initialGalaxy, 0),
       forgeDraft: null,
       treasury: makeLedger(),
+      taxCoffers: {},
+      imperialWorks: emptyWorks(),
       events: [],
       expeditions: [],
       auditLog: [],
@@ -293,7 +364,9 @@ export const useStrategicStore = create(
         const galaxy = createGalaxySeed();
         const system = Object.values(galaxy.systems)[0];
         set({
-          galaxy, treasury: makeLedger(), events: [], expeditions: [], auditLog: [], strategicTurn: 0,
+          galaxy, treasury: makeLedger(), taxCoffers: {}, imperialWorks: emptyWorks(), sites: [], enemies: [],
+          comets: ensureComets([], galaxy, 0),
+          events: [], expeditions: [], auditLog: [], strategicTurn: 0,
           selectedSystemId: system.id, selectedPlanetId: system.planets[0].id,
           inspectionPlanetId: null, activeActivityEventId: null, activeExpeditionId: null,
           advisorOpen: false, advisorCharacterId: 'director-vale', advisorEventId: null,
@@ -520,22 +593,27 @@ export const useStrategicStore = create(
         const state = get();
         const target = findPlanet(state.galaxy, planet.id);
         if (!target) return null;
-        const eventType = generated?.event_type || chooseEventType(state.galaxy, target, state.strategicTurn);
+        const eventType = generated?.event_type || chooseEventType(state.galaxy, target, state.strategicTurn, state.sites);
         const activities = activitiesForCrisis(eventType);
         const activity = generated?.activity
           ? (ACTIVITIES_BY_ID[generated.activity.id] || generated.activity)
           : activities[Math.floor(hashUnit(`${target.id}:${state.strategicTurn}:activity`) * activities.length)];
         const risk = riskForPlanet(state.galaxy, target);
         const riskScore = generated?.risk_score ?? Math.max(...Object.values(risk));
-        const severity = generated?.severity
-          ?? Number((0.2 + riskScore * 0.65 + (hashUnit(`${target.id}:severity`) - 0.5) * 0.1).toFixed(2));
+        const relief = operationRelief(state.imperialWorks, target.systemId, state.sites);
+        const fleetAlreadyApplied = generated?.severity != null ? (relief.fleet || 0) * 0.08 : 0;
+        const severity = clamp((generated?.severity
+          ?? Number((0.2 + riskScore * 0.65 + (hashUnit(`${target.id}:severity`) - 0.5) * 0.1).toFixed(2)))
+          - Math.max(0, relief.severity - fleetAlreadyApplied), 0.1, 0.95);
         const id = `crisis-${state.strategicTurn}-${target.id}-${state.events.length + 1}`;
+        const system = state.galaxy.systems[target.systemId];
         const event = {
           id, eventType, title: CRISIS_TITLES[eventType] || 'Strategic emergency',
-          planetId: target.id, systemId: target.systemId, bodyId: target.id, bodyName: target.name,
+          planetId: target.id, systemId: target.systemId, systemName: system?.name || 'Unknown system',
+          bodyId: target.id, bodyName: target.name,
           population: target.population, severity: clamp(severity, 0.1, 0.95), status: 'warning',
           activityId: activity.id, progress: 0, createdAtTurn: state.strategicTurn,
-          deadlineTurn: state.strategicTurn + 9,
+          deadlineTurn: state.strategicTurn + 9 + relief.deadline,
           cause: generated?.cause || Object.entries(risk).sort((a, b) => b[1] - a[1])[0][0].replaceAll('_', ' '),
           risk, affectedNodes: generated?.affected_nodes || [],
           eventMetadata: generated?.event_metadata || {},
@@ -593,7 +671,7 @@ export const useStrategicStore = create(
           set({ activeExpeditionId: existing.id });
           return existing;
         }
-        const launchCost = { credits: -1200, commodities: { energy: -12, food: -6 } };
+        const launchCost = { credits: -1200, commodities: { plasmaCells: -12, food: -6 } };
         if (!canAfford(state.treasury, launchCost)) return null;
         const transaction = applyResourceTransaction(state.treasury, launchCost);
         const firstNode = plan.nodes[0];
@@ -635,9 +713,9 @@ export const useStrategicStore = create(
         const reward = success ? {
           credits: Math.round(300 + node.reward * 1600),
           commodities: {
-            exoticMatter: node.kind === 'archive' || node.kind === 'vault'
+            hypermatter: node.kind === 'archive' || node.kind === 'vault'
               ? Math.max(1, Math.round(node.reward * 5)) : 0,
-            alloys: node.kind === 'chamber' ? Math.round(node.reward * 8) : 0,
+            durasteel: node.kind === 'chamber' ? Math.round(node.reward * 8) : 0,
           },
         } : { credits: 0, commodities: {} };
         const delta = {
@@ -713,10 +791,47 @@ export const useStrategicStore = create(
           activeExpeditionId: null,
         }));
       },
+      collectSystemTax(systemId) {
+        const amount = Math.max(0, Math.round(get().taxCoffers[systemId] || 0));
+        if (amount <= 0) return 0;
+        set((state) => ({
+          taxCoffers: { ...state.taxCoffers, [systemId]: 0 },
+          treasury: applyResourceTransaction(state.treasury, { credits: amount }).ledger,
+        }));
+        return amount;
+      },
+      collectAllTaxes() {
+        const coffers = get().taxCoffers;
+        const total = Object.values(coffers).reduce((sum, amount) => sum + Math.max(0, Math.round(amount || 0)), 0);
+        if (total <= 0) return 0;
+        set((state) => ({
+          taxCoffers: Object.fromEntries(Object.keys(state.taxCoffers).map((id) => [id, 0])),
+          treasury: applyResourceTransaction(state.treasury, { credits: total }).ledger,
+        }));
+        return total;
+      },
       advanceStrategicTime(turns = 1) {
         const count = Math.max(1, Math.min(12, Math.round(turns)));
         set((state) => {
-          let next = { ...state, strategicTurn: state.strategicTurn + count };
+          const built = tickSites(state.sites || [], count);
+          const incursion = tickIncursions({
+            enemies: state.enemies || [],
+            sites: built,
+            galaxy: state.galaxy,
+            turns: count,
+            turn: state.strategicTurn + count,
+          });
+          const sites = accrueSiteStock(incursion.sites, state.galaxy, count);
+          const yieldDelta = miningYield(sites, state.galaxy, count);
+          let next = {
+            ...state,
+            sites,
+            enemies: incursion.enemies,
+            comets: ensureComets(tickComets(state.comets || [], state.galaxy, count), state.galaxy, state.strategicTurn + count),
+            strategicTurn: state.strategicTurn + count,
+            taxCoffers: accrueSystemTaxes(state.taxCoffers, state.galaxy.systems, count, state.imperialWorks, sites),
+            treasury: applyResourceTransaction(state.treasury, { commodities: yieldDelta }).ledger,
+          };
           if (next.strategicTurn % 3 === 0) {
             next = {
               ...next,
@@ -740,6 +855,151 @@ export const useStrategicStore = create(
           return next;
         });
       },
+      purchaseSkill(skillId) {
+        const skill = SKILL_TREE.find((item) => item.id === skillId);
+        const state = get();
+        if (!skill) return { ok: false, reason: 'unknown' };
+        const offer = skillOffer(state.imperialWorks, skill);
+        if (offer.maxed) return { ok: false, reason: 'maxed' };
+        if (offer.locked) return { ok: false, reason: 'locked' };
+        if (state.treasury.credits < offer.cost) return { ok: false, reason: 'credits' };
+        set({
+          treasury: applyResourceTransaction(state.treasury, { credits: -offer.cost }).ledger,
+          imperialWorks: {
+            ...state.imperialWorks,
+            skills: { ...state.imperialWorks.skills, [skill.id]: offer.rank + 1 },
+          },
+        });
+        return { ok: true };
+      },
+      purchaseFacility(systemId, facilityId) {
+        const facility = FACILITIES.find((item) => item.id === facilityId);
+        const state = get();
+        if (!facility || !state.galaxy.systems[systemId]) return { ok: false, reason: 'unknown' };
+        const offer = facilityOffer(state.imperialWorks, systemId, facility);
+        if (offer.maxed) return { ok: false, reason: 'maxed' };
+        if (state.treasury.credits < offer.cost) return { ok: false, reason: 'credits' };
+        const current = state.imperialWorks.facilities[systemId] || {};
+        set({
+          treasury: applyResourceTransaction(state.treasury, { credits: -offer.cost }).ledger,
+          imperialWorks: {
+            ...state.imperialWorks,
+            facilities: {
+              ...state.imperialWorks.facilities,
+              [systemId]: { ...current, [facility.id]: offer.rank + 1 },
+            },
+          },
+        });
+        return { ok: true };
+      },
+      startConstruction(systemId, type) {
+        const state = get();
+        const system = state.galaxy.systems[systemId];
+        const offer = buildOffer(state.sites || [], system, type);
+        if (!system || !offer.ok) return { ok: false, reason: offer.reason || 'unknown' };
+        const short = missingRequirement(state.treasury, offer.cost);
+        if (short) return { ok: false, reason: short };
+        const commodities = Object.fromEntries(Object.entries(offer.cost.commodities).map(([key, amount]) => [key, -amount]));
+        const existing = (state.sites || []).find((site) => site.systemId === systemId && site.type === type);
+        const durationMs = devBuildClockEnabled() ? limitBuildMs(offer.cycles) : null;
+        const building = {
+          targetLevel: offer.nextLevel,
+          cyclesRemaining: offer.cycles,
+          cyclesTotal: offer.cycles,
+          ...(durationMs ? { readyAt: Date.now() + durationMs, durationMs } : {}),
+        };
+        const sites = existing
+          ? state.sites.map((site) => (site.id === existing.id ? { ...site, building } : site))
+          : [...(state.sites || []), {
+            id: `site-${type}-${systemId}-${state.strategicTurn}`,
+            type,
+            systemId,
+            level: 0,
+            building,
+            transit: null,
+          }];
+        set({
+          treasury: applyResourceTransaction(state.treasury, { credits: -offer.cost.credits, commodities }).ledger,
+          sites,
+        });
+        return { ok: true, cycles: offer.cycles, durationMs };
+      },
+      settleDevBuilds() {
+        const sites = completeDevBuilds(get().sites || []);
+        if (sites !== get().sites) set({ sites });
+      },
+      moveRig(siteId, toSystemId) {
+        const state = get();
+        const site = (state.sites || []).find((item) => item.id === siteId);
+        if (!site || !HAULERS.has(site.type)) return { ok: false, reason: 'unknown' };
+        if (site.building) return { ok: false, reason: 'building' };
+        if (site.transit) return { ok: false, reason: 'transit' };
+        if (!state.galaxy.systems[toSystemId] || toSystemId === site.systemId) return { ok: false, reason: 'same' };
+        if ((state.sites || []).some((item) => item.type === site.type && item.systemId === toSystemId)) {
+          return { ok: false, reason: 'occupied' };
+        }
+        const cycles = transitCycles(state.galaxy, site.systemId, toSystemId, state.sites);
+        set({
+          sites: state.sites.map((item) => (item.id === siteId ? {
+            ...item,
+            transit: { toSystemId, cyclesRemaining: cycles, cyclesTotal: cycles },
+          } : item)),
+        });
+        return { ok: true, cycles };
+      },
+      dispatchFleet(siteId, enemyId) {
+        const state = get();
+        const site = (state.sites || []).find((item) => item.id === siteId);
+        const enemy = (state.enemies || []).find((item) => item.id === enemyId);
+        if (!site || site.type !== 'fleet' || site.level < 1 || site.building || site.offline) return { ok: false };
+        if (site.sortie && !site.sortie.returning) return { ok: false, reason: 'sortie' };
+        if (!enemy || enemy.status === 'repelled') return { ok: false };
+        const home = state.galaxy.systems[site.systemId];
+        if (!home) return { ok: false };
+        const from = site.sortie ? { x: site.sortie.x, y: site.sortie.y } : { x: home.x, y: home.y };
+        const target = enemyPosition(enemy, state.galaxy);
+        const distance = Math.hypot(target.x - from.x, target.y - from.y);
+        const speed = Math.max(3.2, distance / 5);
+        set({
+          sites: state.sites.map((item) => (item.id === siteId ? {
+            ...item,
+            sortie: { enemyId, x: from.x, y: from.y, speed, returning: false },
+          } : item)),
+        });
+        return { ok: true, cycles: Math.max(1, Math.round(distance / speed)) };
+      },
+      applyCometChart(cometId, chart) {
+        if (!chart?.nodes?.length) return;
+        set((state) => ({
+          comets: (state.comets || []).map((comet) => {
+            if (comet.id !== cometId) return comet;
+            const charted = {
+              ...comet,
+              heading: chart.heading || comet.heading,
+              source: chart.source || 'labyrinth',
+              provenance: chart.provenance || [],
+            };
+            if (comet.progress > 0.2) return charted;
+            return {
+              ...charted,
+              path: cometPathFromLanes(chart, comet.seed, state.galaxy.systems),
+            };
+          }),
+        }));
+      },
+      attachFactionBanner(eventId, bannerUrl, provenance = []) {
+        set((state) => ({
+          events: state.events.map((event) => {
+            if (event.id !== eventId) return event;
+            const faction = { ...(event.eventMetadata?.faction || {}), bannerUrl };
+            return {
+              ...event,
+              eventMetadata: { ...(event.eventMetadata || {}), faction },
+              quantum: provenance.length ? [...(event.quantum || []), ...provenance] : event.quantum,
+            };
+          }),
+        }));
+      },
       openAdvisor(characterId = 'director-vale', eventId = null) {
         set({ advisorOpen: true, advisorCharacterId: characterId, advisorEventId: eventId });
       },
@@ -748,25 +1008,33 @@ export const useStrategicStore = create(
     }),
     {
       name: 'quantum-rim-strategic-state',
-      version: 4,
+      version: 8,
       partialize: (state) => ({
         schemaVersion: state.schemaVersion, galaxy: state.galaxy, treasury: state.treasury,
+        taxCoffers: state.taxCoffers, imperialWorks: state.imperialWorks, sites: state.sites,
+        enemies: state.enemies, comets: state.comets,
         events: state.events, expeditions: state.expeditions,
         auditLog: state.auditLog, strategicTurn: state.strategicTurn,
         selectedSystemId: state.selectedSystemId, selectedPlanetId: state.selectedPlanetId,
         forgeDraft: state.forgeDraft,
       }),
-      migrate: (persisted) => ({
-        ...persisted,
-        schemaVersion: 4,
-        galaxy: persisted?.galaxy || createGalaxySeed(),
-        treasury: persisted?.treasury || makeLedger(),
-        events: persisted?.events || [],
-        expeditions: persisted?.expeditions || [],
-        auditLog: persisted?.auditLog || [],
-        strategicTurn: persisted?.strategicTurn || 0,
-        forgeDraft: persisted?.forgeDraft || null,
-      }),
+      migrate: (persisted) => upgradeStrategicState(persisted),
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        const upgraded = upgradeStrategicState(state);
+        const next = {
+          ...upgraded,
+          galaxy: scrubBlobUrls(upgraded.galaxy),
+          events: scrubBlobUrls(upgraded.events || []),
+          expeditions: scrubBlobUrls(upgraded.expeditions || []),
+          forgeDraft: upgraded.forgeDraft ? scrubBlobUrls(upgraded.forgeDraft) : null,
+        };
+        Object.assign(state, next);
+        queueMicrotask(() => {
+          useStrategicStore.setState(next);
+          restoreCachedPlanetTextures();
+        });
+      },
     },
   ),
 );
@@ -778,3 +1046,15 @@ export const selectActiveEvents = (state) => state.events.filter((event) => even
 export const selectActiveExpedition = (state) => (
   state.expeditions.find((item) => item.id === state.activeExpeditionId) || null
 );
+
+function restoreCachedPlanetTextures() {
+  const { galaxy, setBodyTexture } = useStrategicStore.getState();
+  const planets = Object.values(galaxy?.systems || {}).flatMap((system) => system.planets || []);
+  planets.forEach(async (planet) => {
+    if (planet.textureUrl) return;
+    const key = planet.textureKey || planet.texture?.seed;
+    if (!key) return;
+    const url = await resolveCachedTexture(key);
+    if (url) setBodyTexture(planet.id, { textureUrl: url });
+  });
+}

@@ -1,19 +1,33 @@
-const COMMODITY_KEYS = ['food', 'water', 'energy', 'alloys', 'exoticMatter'];
+import { depositForSystem } from './deposits.js';
+
+const COMMODITY_KEYS = ['food', 'water', 'plasmaCells', 'tibanna', 'coaxium', 'durasteel', 'doonium', 'beskar', 'hypermatter', 'kyber', 'cortosis'];
 
 function settlement(id, name, population, specialty, overrides = {}) {
   const production = {
     food: specialty === 'agriculture' ? 34 : 12,
     water: specialty === 'water' ? 36 : 15,
-    energy: specialty === 'energy' ? 42 : 18,
-    alloys: specialty === 'industry' ? 28 : 8,
-    exoticMatter: specialty === 'research' ? 6 : 1,
+    plasmaCells: specialty === 'energy' ? 42 : 18,
+    tibanna: 0,
+    coaxium: 0,
+    durasteel: specialty === 'industry' ? 28 : 8,
+    doonium: 0,
+    beskar: 0,
+    hypermatter: specialty === 'research' ? 6 : 1,
+    kyber: 0,
+    cortosis: 0,
   };
   const consumption = {
     food: Math.max(8, Math.round(population / 18)),
     water: Math.max(9, Math.round(population / 16)),
-    energy: Math.max(10, Math.round(population / 14)),
-    alloys: Math.max(2, Math.round(population / 70)),
-    exoticMatter: specialty === 'research' ? 2 : 0,
+    plasmaCells: Math.max(10, Math.round(population / 14)),
+    tibanna: 0,
+    coaxium: 0,
+    durasteel: Math.max(2, Math.round(population / 70)),
+    doonium: 0,
+    beskar: 0,
+    hypermatter: specialty === 'research' ? 2 : 0,
+    kyber: 0,
+    cortosis: 0,
   };
   return {
     id,
@@ -34,7 +48,10 @@ function settlement(id, name, population, specialty, overrides = {}) {
     factionInfluence: { imperial: 0.62, guilds: 0.23, frontier: 0.15 },
     production,
     consumption,
-    storage: { food: 160, water: 190, energy: 220, alloys: 90, exoticMatter: 12 },
+    storage: {
+      food: 160, water: 190, plasmaCells: 220, tibanna: 12, coaxium: 0,
+      durasteel: 90, doonium: 8, beskar: 0, hypermatter: 12, kyber: 1, cortosis: 0,
+    },
     imports: [],
     exports: COMMODITY_KEYS.filter((key) => production[key] > consumption[key]),
     activeProjects: [],
@@ -156,6 +173,7 @@ export function createGalaxySeed() {
     definition.id,
     {
       ...definition,
+      deposits: depositForSystem(definition),
       planets: definition.planets.map((item, index) => createStrategicPlanet(definition.id, item, index)),
       history: [],
     },

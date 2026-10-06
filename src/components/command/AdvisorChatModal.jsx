@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuantumServices } from '../../services/useQuantumServices';
 import { useStrategicStore } from '../../store/useStrategicStore';
 import { findPlanet } from '../../game/galaxySeed';
+import { localAdvisorReply } from '../../game/advisors';
 import { ModalShell } from './ModalShell';
 import { QuantumProvenance } from './QuantumProvenance';
 
@@ -92,6 +93,23 @@ export function AdvisorChatModal() {
       }));
     } catch (requestError) {
       if (requestError.name === 'AbortError') return;
+      if (!requestError.status) {
+        setMessagesByCharacter((current) => ({
+          ...current,
+          [requestCharacter.id]: [...(current[requestCharacter.id] || []), {
+            role: 'assistant',
+            content: localAdvisorReply({
+              characterId: requestCharacter.id,
+              message: content,
+              body: context.body,
+              crisis: context.crisis,
+            }),
+            model: 'local cabinet',
+          }],
+        }));
+        setError('Quantum Rim Services is offline, so this reply is from the local cabinet.');
+        return;
+      }
       setError(requestError.status === 503
         ? 'OpenRouter is not configured. Add OPENROUTER_API_KEY to the service .env.'
         : requestError.message);

@@ -135,7 +135,7 @@ const SURFACE_FINISH = /* glsl */`
   uniform float uScar;
   uniform float uHasMap;
   uniform sampler2D uMap;
-  vec3 finishSurface(vec3 col, vec3 p, vec2 uv) {
+  vec3 finishSurface(vec3 col, vec3 p, vec2 uv, vec3 surfaceNormal) {
     if (uHasMap > 0.5) {
       vec3 mapCol = texture2D(uMap, uv).rgb;
       col = mix(col, col * mapCol * 1.35, 0.72);
@@ -144,7 +144,7 @@ const SURFACE_FINISH = /* glsl */`
       float vein = smoothstep(0.55, 0.82, fbm(p * 5.0, 3));
       col = mix(col, vec3(1.0, 0.22, 0.02), vein * 0.9);
     } else if (uArchetype > 1.5 && uArchetype < 2.5) {
-      float shine = pow(max(dot(normalize(vNormal), normalize(vec3(1.0, 0.4, 1.2))), 0.0), 24.0);
+      float shine = pow(max(dot(normalize(surfaceNormal), normalize(vec3(1.0, 0.4, 1.2))), 0.0), 24.0);
       col += vec3(0.45, 0.62, 0.85) * shine * 0.55;
     } else if (uArchetype > 4.5 && uArchetype < 5.5) {
       float spark = step(0.86, fbm(p * 9.0, 2));
@@ -220,7 +220,7 @@ const gasFrag = /* glsl */`
       }
     }
 
-    col = finishSurface(col, p, vUv);
+    col = finishSurface(col, p, vUv, vNormal);
     gl_FragColor = vec4(col, 1.0);
   }
 `;
@@ -309,7 +309,7 @@ const rockyFrag = /* glsl */`
       }
     }
 
-    col = finishSurface(col, p, vUv);
+    col = finishSurface(col, p, vUv, vNormal);
     gl_FragColor = vec4(col, 1.0);
   }
 `;
@@ -499,6 +499,11 @@ export const Body = memo(function Body({ bodyId, type, color, radius, isSelected
       <mesh
         ref={meshRef}
         onClick={(e) => { e.stopPropagation(); onClick(bodyId); }}
+        onPointerOver={(event) => {
+          event.stopPropagation();
+          const live = useSimStore.getState().bodies.find((item) => item.id === bodyId);
+          if (live?.freshUntil > Date.now()) useSimStore.getState().dismissFresh(bodyId);
+        }}
       >
         <sphereGeometry args={[radius, 64, 32]} />
         <primitive object={material} attach="material" />

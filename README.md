@@ -48,10 +48,20 @@ An event director advances one strategic cycle every five seconds. It keeps a 4â
 
 | Theater | What you do there |
 | --- | --- |
-| **Galaxy command** | Core Worlds, Inner Rim, and Outer Rim. Settlements, routes, defenses, credits, food, water, energy, alloys, exotic matter. |
+| **Galaxy command** | Core Worlds, Inner Rim, and Outer Rim. Settlements, routes, defense fleets, graded deposits, credits, and the sky chart. |
 | **System view** | The inherited Three.js sandbox. Merge or elastic collisions, tidal heating, Lagrange points, black-hole photon rings, velocity trails, cinema camera. |
 
 Small-body collisions ask Coin Toss for a bounded encounter branch and Labyrinth for the debris topology. Those paths show up as hazard lanes on the galaxy map.
+
+## Sky chart and incursions
+
+The galaxy map can show three extra layers, each toggled the same way as the deposit heat map: comets, asteroid belts, and cosmic dust. Dust is a seeded haze. Belts are fields of individual asteroids that drift in the same direction around the core. Comets and meteors are bodies, not lines.
+
+A comet's trajectory still uses Labyrinth's node-and-edge topology, and Coin Toss picks the heading (outer, inner, or core). The chart draws the body and its tail, and the body moves along that trajectory. Hovering it shows its name. It fades out when it reaches a system's proximity or leaves the map, then a replacement is charted. If Atlas is down, the same shape is filled by the classical fallback and the provenance says so. A chart that returns after the body has already travelled keeps the trajectory already on screen.
+
+Deposit heat is a semi-transparent amoeba around each system that holds the selected grade, wider than the system marker. The outline is seeded, so two systems do not share a blob.
+
+Raiders are a separate layer from the crisis console. One enemy fleet is allowed when the republic has one or two commissioned defense fleets. From three fleets upward the cap is one enemy for every three of yours. A republic with no defense fleet draws no map raiders. A raider flies in from the rim over several cycles. On arrival it presses the system: the map shows `KNOCKOUT` and a countdown. If that timer expires, the targeted mine, port, lab, medical station, or fleet goes offline for six cycles and the system shows `OFFLINE`. While the timer is still running, drag a defense fleet onto the raider. The fleet leaves its station and flies toward the raider's current position. When the two meet, both markers pulse `ENGAGED` for three cycles and the raid withdraws. The fleet then flies home. A fleet in the field, and a site that is offline, do not provide their usual defense, tax, or yield until they recover.
 
 ## The quantum boundary
 
@@ -59,9 +69,9 @@ Classical state stays authoritative. Moth Atlas supplies bounded variation, conn
 
 | Engine | Role in play |
 | --- | --- |
-| **Coin Toss** | Crisis branches and uncertain discoveries |
-| **Labyrinth** | Routes, affected districts, ruin topology |
-| **Tessa Image** | Long-term planetary surfaces and atmosphere |
+| **Coin Toss** | Crisis branches, raid doctrine, and comet headings |
+| **Labyrinth** | Routes, debris lanes, ruin topology, and comet polylines |
+| **Tessa Image** | Long-term planetary surfaces, atmosphere, and incursion banners |
 | **Blur** | Impact, storm, radiation, and lensing aftermath |
 | **Telablur** | Paired worlds and linked anomaly states |
 | **Retrocausal Echo** | Premonitions, clues, history, and event audio |

@@ -8,21 +8,25 @@
  * The canvas ref is threaded through both so the HUD can trigger recording.
  */
 
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Scene } from './components/Scene';
 import { HUD }   from './components/HUD';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { KeyboardShortcuts } from './components/KeyboardShortcuts';
 import { GalaxyCommandCenter } from './components/command/GalaxyCommandCenter';
-import { ImpactChronicle } from './components/command/ImpactChronicle';
 import { SystemOrdersMenu } from './components/command/SystemOrdersMenu';
 import { StrategicEventDirector } from './components/command/StrategicEventDirector';
 import { useStrategicStore } from './store/useStrategicStore';
+import { installUiSounds } from './game/uiSound';
 
 export default function App() {
   const canvasRef = useRef(null);
   const viewMode = useStrategicStore((state) => state.viewMode);
   const setViewMode = useStrategicStore((state) => state.setViewMode);
+
+  useEffect(() => {
+    installUiSounds();
+  }, []);
 
   return (
     <>
@@ -33,7 +37,6 @@ export default function App() {
             <Scene canvasRef={canvasRef} />
           </ErrorBoundary>
           <HUD canvasRef={canvasRef} />
-          <ImpactChronicle />
           <KeyboardShortcuts />
           <button className="return-to-galaxy" onClick={() => setViewMode('galaxy')}>
             ← Strategic galaxy map

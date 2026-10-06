@@ -1,3 +1,4 @@
+import { depositForSystem } from './deposits.js';
 import { createStrategicPlanet } from './galaxySeed.js';
 import { planQuantumActions } from './planetProfile.js';
 import { chooseAppearance, sampleMass, skewSuitability } from './worldCatalog.js';
@@ -478,6 +479,12 @@ export function commitDraftToGalaxy(galaxy, draft) {
     wealth: draft.scaffold.wealth,
     security: draft.scaffold.security,
     routeDanger: draft.scaffold.routeDanger,
+    deposits: depositForSystem({
+      id,
+      zone: draft.scaffold.zone,
+      routeDanger: draft.scaffold.routeDanger,
+      security: draft.scaffold.security,
+    }),
     history: [{
       id: `${id}:forged`,
       turn: 0,
@@ -757,7 +764,8 @@ export function strategicSystemToSimBodies(system) {
       name: body.name,
       type: simType,
       archetype: body.archetype,
-      textureUrl: body.textureUrl || null,
+      textureUrl: body.textureUrl || body.texture?.url || null,
+      textureSource: body.texture?.source || null,
       scar: body.scar || 0,
       mass,
       radius,
@@ -800,7 +808,9 @@ export function strategicSystemToSimBodies(system) {
       name: body.name,
       type: 'moon',
       archetype: body.archetype,
-      textureUrl: body.textureUrl || null,
+      parentId: parent.id,
+      textureUrl: body.textureUrl || body.texture?.url || null,
+      textureSource: body.texture?.source || null,
       scar: body.scar || 0,
       mass,
       radius,

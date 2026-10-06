@@ -20,7 +20,9 @@
   ],
   "scripts": {
     "fetch:images": "node scripts/fetch-images.mjs",
-    "dev": "vite",
+    "dev": "node scripts/dev-activity.mjs",
+    "dev:web": "vite",
+    "start:discord-api": "node server/devServer.js",
     "prebuild": "node scripts/fetch-images.mjs",
     "build": "vite build",
     "test": "node --test",
@@ -28,6 +30,7 @@
     "preview": "vite preview --port 4173"
   },
   "dependencies": {
+    "@discord/embedded-app-sdk": "^2.5.0",
     "@react-three/drei": "^9.117.3",
     "@react-three/fiber": "^8.17.10",
     "@react-three/postprocessing": "^2.16.3",

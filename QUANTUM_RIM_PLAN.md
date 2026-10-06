@@ -30,3 +30,7 @@ Players create a compact star system, trigger spectacular cosmic events, inspect
 - Cache every completed artifact.
 - Never make an Atlas request per animation frame.
 - Do not commit API tokens.
+
+## Command layer added after the hackathon plan
+
+Galactic command now charts comets and meteors through Coin Toss (heading) and Labyrinth (node-and-edge trajectory), with a classical fallback when Atlas is down. The map shows the moving body, not the trajectory line. A body fades when it reaches a system's proximity or leaves the map. Asteroid belts are rotating fields of rocks, and cosmic dust and amorphous deposit heat blobs are map layers. Defense fleets can be dragged onto a raider and fly out to intercept; a raider that is not met knocks a facility offline on a cycle timer. Enemy fleets are capped at one when the player has one or two fleets, otherwise one enemy for every three player fleets.

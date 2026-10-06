@@ -37,6 +37,25 @@ export function CinematicCamera() {
   }, [cinemaMode]);
 
   useFrame((_, delta) => {
+    if (!cinemaMode && controlsRef.current) {
+      const { focusBodyId, focusAt, bodies } = useSimStore.getState();
+      const age = focusBodyId ? (Date.now() - (focusAt || 0)) / 1000 : 99;
+      const body = age < 1.6 ? bodies.find((item) => item.id === focusBodyId && item.isAlive !== false) : null;
+      if (body) {
+        const dist = Math.max(7, (body.radius || 0.4) * 16);
+        _desiredTarget.set(body.position[0], body.position[1], body.position[2]);
+        _desiredPos.set(
+          body.position[0] + dist * 0.28,
+          body.position[1] + dist * 0.7,
+          body.position[2] + dist * 0.82,
+        );
+        const alpha = 1 - Math.pow(0.05, delta);
+        camera.position.lerp(_desiredPos, alpha);
+        controlsRef.current.target.lerp(_desiredTarget, alpha);
+        controlsRef.current.update();
+        return;
+      }
+    }
     if (!cinemaMode) return;
 
     const { bodies } = useSimStore.getState();

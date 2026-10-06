@@ -79,6 +79,7 @@ const CRISIS_ACTIVITY_MAP = {
   'colony-unrest': ['colony-referendum', 'sabotage-investigation', 'supply-chain-triage'],
   'ruin-discovery': ['ruins-expedition', 'containment-protocol', 'quantum-lane-survey'],
   'quantum-anomaly': ['quantum-echo', 'signal-decoding', 'containment-protocol'],
+  'faction-incursion': ['fleet-command', 'emergency-evacuation', 'sabotage-investigation'],
 };
 
 export function activitiesForCrisis(eventType) {

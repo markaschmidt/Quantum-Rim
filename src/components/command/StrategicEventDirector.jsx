@@ -5,6 +5,9 @@ import {
   chooseAutomaticEventTarget,
   shouldTriggerIntermittentEvent,
 } from '../../game/eventDirector.js';
+import { devBuildClockEnabled } from '../../game/devBuildClock.js';
+import { rankAt } from '../../game/facilities.js';
+import { forgeFactionBanner } from '../../game/factionBanner.js';
 import { useQuantumServices } from '../../services/useQuantumServices.js';
 import { useStrategicStore } from '../../store/useStrategicStore.js';
 
@@ -14,16 +17,27 @@ export function StrategicEventDirector() {
   const client = useQuantumServices();
   const galaxy = useStrategicStore((state) => state.galaxy);
   const events = useStrategicStore((state) => state.events);
+  const sites = useStrategicStore((state) => state.sites);
   const strategicTurn = useStrategicStore((state) => state.strategicTurn);
   const advanceStrategicTime = useStrategicStore((state) => state.advanceStrategicTime);
   const createCrisis = useStrategicStore((state) => state.createCrisis);
+  const attachFactionBanner = useStrategicStore((state) => state.attachFactionBanner);
   const attemptedTurn = useRef(-1);
   const requestInFlight = useRef(false);
+  const chartedComets = useRef(new Set());
+  const cometRetryAt = useRef(0);
 
   useEffect(() => {
     const timer = window.setInterval(() => advanceStrategicTime(1), CYCLE_DURATION_MS);
     return () => window.clearInterval(timer);
   }, [advanceStrategicTime]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (devBuildClockEnabled()) useStrategicStore.getState().settleDevBuilds();
+    }, 250);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (attemptedTurn.current === strategicTurn || requestInFlight.current) return;
@@ -56,14 +70,37 @@ export function StrategicEventDirector() {
       },
       mode: 'emu',
       risk,
+      defenses: {
+        fleet: rankAt(sites, target.planet.systemId, 'fleet'),
+        medical: rankAt(sites, target.planet.systemId, 'medical'),
+      },
     }).then((generated) => {
-      createCrisis(target.planet, { generated, source: 'event-director' });
+      const event = createCrisis(target.planet, { generated, source: 'event-director' });
+      return forgeFactionBanner(client, event, attachFactionBanner);
     }).catch(() => {
-      createCrisis(target.planet, { source: 'event-director-fallback' });
+      const event = createCrisis(target.planet, { source: 'event-director-fallback' });
+      return forgeFactionBanner(client, event, attachFactionBanner);
     }).finally(() => {
       requestInFlight.current = false;
     });
-  }, [client, createCrisis, events, galaxy, strategicTurn]);
+  }, [attachFactionBanner, client, createCrisis, events, galaxy, sites, strategicTurn]);
+
+  useEffect(() => {
+    if (Date.now() < cometRetryAt.current) return undefined;
+    const pending = (useStrategicStore.getState().comets || []).find((comet) => (
+      comet.source !== 'labyrinth' && !chartedComets.current.has(comet.id)
+    ));
+    if (!pending) return undefined;
+    chartedComets.current.add(pending.id);
+    let cancelled = false;
+    client.chartComet({ seed: pending.seed, mode: 'emu' }).then((chart) => {
+      if (!cancelled) useStrategicStore.getState().applyCometChart(pending.id, chart);
+    }).catch(() => {
+      chartedComets.current.delete(pending.id);
+      cometRetryAt.current = Date.now() + 60000;
+    });
+    return () => { cancelled = true; };
+  }, [client, strategicTurn]);
 
   return null;
 }

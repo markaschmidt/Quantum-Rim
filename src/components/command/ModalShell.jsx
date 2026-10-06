@@ -1,8 +1,15 @@
-import { useEffect, useId, useRef } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
+
+import { noteMenuOpened } from '../../game/uiSound.js';
 
 export function ModalShell({ title, eyebrow, children, onClose, className = '' }) {
   const dialogRef = useRef(null);
   const titleId = useId();
+
+  useLayoutEffect(() => {
+    noteMenuOpened();
+  }, []);
 
   useEffect(() => {
     const previous = document.activeElement;
@@ -37,7 +44,7 @@ export function ModalShell({ title, eyebrow, children, onClose, className = '' }
     };
   }, [onClose]);
 
-  return (
+  return createPortal(
     <div className="command-modal-backdrop" onMouseDown={onClose}>
       <section
         ref={dialogRef}
@@ -56,6 +63,7 @@ export function ModalShell({ title, eyebrow, children, onClose, className = '' }
         </header>
         {children}
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }

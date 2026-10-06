@@ -29,6 +29,8 @@ import { Trail }            from './Trail';
 import { VelocityArrow }    from './VelocityArrow';
 import { LagrangePoints }   from './LagrangePoints';
 import { CollisionEffects } from './CollisionEffect';
+import { FreshRings } from './FreshRing';
+import { QuasarJets } from './QuasarJets';
 import { PostFX }           from './PostFX';
 import { GridPlane }        from './GridPlane';
 import { BodyGlow }         from './BodyGlow';
@@ -194,6 +196,8 @@ function SceneContent() {
       {showLagrange && <LagrangePoints />}
       {showPreds && <OrbitPredictor />}
       {showLabels && <BodyLabels />}
+      <FreshRings />
+      <QuasarJets />
       <CollisionEffects />
       <RocheRings />
       <DragToFling />

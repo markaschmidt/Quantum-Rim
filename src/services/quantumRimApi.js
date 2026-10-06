@@ -13,10 +13,14 @@ export class QuantumRimApi {
   constructor(baseUrl = import.meta.env.VITE_QUANTUM_SERVICE_URL || DEFAULT_BASE_URL) {
     this.baseUrl = baseUrl.replace(/\/$/, '');
     this.cache = new Map();
+    this.offlineUntil = 0;
   }
 
   async request(path, options = {}) {
     const { timeoutMs = 15000, signal: externalSignal, ...fetchOptions } = options;
+    if (this.offlineUntil > Date.now()) {
+      throw new QuantumRimApiError('Quantum Rim Services is offline. The local cabinet will answer.', 0);
+    }
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(new DOMException('Request timed out', 'TimeoutError')), timeoutMs);
     const abortFromExternal = () => controller.abort(externalSignal.reason);
@@ -31,6 +35,14 @@ export class QuantumRimApi {
           ...fetchOptions.headers,
         },
       });
+    } catch (error) {
+      const cancelled = externalSignal?.aborted || error?.name === 'AbortError';
+      if (!cancelled) this.offlineUntil = Date.now() + 20000;
+      if (externalSignal?.aborted) throw error;
+      throw new QuantumRimApiError(
+        cancelled ? 'Request timed out.' : 'Quantum Rim Services is offline. The local cabinet will answer.',
+        0,
+      );
     } finally {
       window.clearTimeout(timeout);
       externalSignal?.removeEventListener('abort', abortFromExternal);
@@ -44,6 +56,7 @@ export class QuantumRimApi {
         payload,
       );
     }
+    this.offlineUntil = 0;
     return payload;
   }
 
@@ -110,6 +123,13 @@ export class QuantumRimApi {
     this.cache.set(key, request);
     request.catch(() => this.cache.delete(key));
     return request;
+  }
+
+  chartComet(request) {
+    return this.request('/api/v1/game/sky/comet', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
   }
 
   generateCrisis(request) {

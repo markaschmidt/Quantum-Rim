@@ -80,7 +80,14 @@ export const BlackHole = memo(function BlackHole({ bodyId, radius }) {
   const photonRingRadius = radius * 2.6;
 
   return (
-    <group ref={groupRef}>
+    <group
+      ref={groupRef}
+      onPointerOver={(event) => {
+        event.stopPropagation();
+        const live = useSimStore.getState().bodies.find((item) => item.id === bodyId);
+        if (live?.freshUntil > Date.now()) useSimStore.getState().dismissFresh(bodyId);
+      }}
+    >
       {/* Event horizon — pure black */}
       <mesh>
         <sphereGeometry args={[radius, 48, 24]} />

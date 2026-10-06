@@ -208,6 +208,8 @@ function toSimBody(body, motion, extra = {}) {
     archetype: body.archetype,
     textureUrl: body.textureUrl || null,
     scar: 0,
+    isAlive: true,
+    trail: [],
     mass: body.mass,
     radius: body.radius || massToRadius(body.mass, type),
     color: body.color,
@@ -283,6 +285,8 @@ function swarm(star, target, count, kind, stamp) {
       intangibleTicks: kind === 'asteroid' ? 12 : 18,
       scar: kind === 'asteroid' ? 0 : 0.35,
       spinRate: 0.6 + index * 0.08,
+      isAlive: true,
+      trail: [],
     });
   }
   return shards;
@@ -305,6 +309,8 @@ function flyby(star, stamp, spec) {
     velocity: [coast[0] + speed, coast[1] - 0.04, coast[2]],
     intangibleTicks: 10,
     spinRate: 0.15,
+    isAlive: true,
+    trail: [],
   };
 }
 
@@ -324,7 +330,7 @@ export function planSystemOrder(orderId, context = {}) {
       kicks: [],
       galaxyBody: null,
       eventType,
-      notice: `${order.label} filed for ${system.name}. Answer it from the galaxy emergency console.`,
+      notice: `${order.label} plays through ${system.name}. The imperial record is left unchanged.`,
       error: null,
     };
   }
@@ -400,19 +406,29 @@ export function planSystemOrder(orderId, context = {}) {
   return placePlanet({ star, bodies, forged, stamp, attach });
 }
 
+function innerReach(star, bodies) {
+  let outer = 1.6;
+  for (const body of bodies) {
+    if (body.type === 'star' || body.isAlive === false || body.isDebris) continue;
+    const name = String(body.name || '');
+    if (name.startsWith('Shard') || name.startsWith('Debris') || name.startsWith('Bolide')) continue;
+    const rel = relativeTo(body, star);
+    if (rel.radius < 0.3 || rel.radius > 9) continue;
+    outer = Math.max(outer, rel.radius);
+  }
+  return outer;
+}
+
 function placePlanet({ star, bodies, forged, stamp, attach }) {
-  const outer = farthestBound(star, bodies);
-  const wide = forgeUnit(stamp, 'lane') > 0.62;
-  const scale = wide
-    ? 2.2 + forgeUnit(stamp, 'far') * 1.7
-    : 1.42 + forgeUnit(stamp, 'near') * 0.55;
-  const massCap = star.mass * (wide ? 0.02 : 0.006);
+  const outer = innerReach(star, bodies);
+  const scale = 1.25 + forgeUnit(stamp, 'near') * 0.85;
+  const massCap = star.mass * 0.006;
   const mass = Math.min(forged.mass, Math.max(massCap, 0.001));
   const type = simType(forged.type);
   const radius = massToRadius(mass, type);
   const orbit = pushClear(outer * scale, radius, star, bodies);
   const theta = forgeUnit(stamp, 'theta') * Math.PI * 2;
-  const inclination = 0.05 + forgeUnit(stamp, 'inc') * (wide ? 0.95 : 0.45);
+  const inclination = 0.05 + forgeUnit(stamp, 'inc') * 0.45;
   const ascNode = forgeUnit(stamp, 'asc') * Math.PI * 2;
   const motion = aroundStar(star, star.mass, orbit, theta, inclination, ascNode, radius);
   const recorded = {
@@ -432,9 +448,7 @@ function placePlanet({ star, bodies, forged, stamp, attach }) {
     revisions: [],
     galaxyBody: attach ? recorded : null,
     eventType: null,
-    notice: wide
-      ? `${forged.name} settled on a wide orbit around ${star.name}.`
-      : `${forged.name} settled just beyond the inner worlds.`,
+    notice: `${forged.name} settled just beyond the inner worlds.`,
     error: null,
   };
 }

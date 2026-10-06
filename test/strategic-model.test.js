@@ -58,17 +58,17 @@ test('every seeded planet receives a visible atmospheric baseline', () => {
 
 test('resource transactions clamp inventory and report only the applied delta', () => {
   assert.deepEqual(Object.keys(DEFAULT_COMMODITIES), [
-    'food', 'water', 'energy', 'alloys', 'exoticMatter',
+    'food', 'water', 'plasmaCells', 'tibanna', 'coaxium', 'durasteel', 'doonium', 'beskar', 'hypermatter', 'kyber', 'cortosis',
   ]);
   const result = applyResourceTransaction(
     { credits: 50, commodities: { ...DEFAULT_COMMODITIES, food: 10 } },
-    { credits: -80, commodities: { food: -40, energy: 10 } },
+    { credits: -80, commodities: { food: -40, plasmaCells: 10 } },
   );
   assert.equal(result.ledger.credits, 0);
   assert.equal(result.appliedDelta.credits, -50);
   assert.equal(result.ledger.commodities.food, 0);
   assert.equal(result.appliedDelta.commodities.food, -10);
-  assert.equal(result.appliedDelta.commodities.energy, 10);
+  assert.equal(result.appliedDelta.commodities.plasmaCells, 10);
 });
 
 test('market price responds to distance, danger, tariffs, and access', () => {
@@ -95,11 +95,11 @@ test('crisis resolution is idempotent and persists consequences', () => {
   });
   const before = useStrategicStore.getState();
   const first = before.resolveActivity(event.id, 0.85, {
-    resourceCost: { energy: 20, alloys: 10 },
+    resourceCost: { plasmaCells: 20, durasteel: 10 },
   });
   const after = useStrategicStore.getState();
   const second = after.resolveActivity(event.id, 0.85, {
-    resourceCost: { energy: 20, alloys: 10 },
+    resourceCost: { plasmaCells: 20, durasteel: 10 },
   });
   const resolvedPlanet = findPlanet(after.galaxy, planet.id);
   assert.equal(first, true);
@@ -114,7 +114,7 @@ test('resource-backed activities cannot receive unfunded protection', () => {
   const state = useStrategicStore.getState();
   const planet = findPlanet(state.galaxy, state.selectedPlanetId);
   useStrategicStore.setState({
-    treasury: { ...state.treasury, commodities: { ...state.treasury.commodities, energy: 0 } },
+    treasury: { ...state.treasury, commodities: { ...state.treasury.commodities, plasmaCells: 0, durasteel: 0 } },
   });
   const event = useStrategicStore.getState().createCrisis(planet, {
     generated: {
@@ -125,7 +125,7 @@ test('resource-backed activities cannot receive unfunded protection', () => {
     },
   });
   useStrategicStore.getState().resolveActivity(event.id, 1, {
-    resourceCost: { energy: 30, alloys: 20 },
+    resourceCost: { plasmaCells: 30, durasteel: 20 },
   });
   const resolved = useStrategicStore.getState().events.find((item) => item.id === event.id);
   assert.equal(resolved.resourceCoverage, 0);
@@ -242,4 +242,139 @@ test('completed expedition writes findings into planet history', () => {
   assert.equal(completed.status, 'completed');
   assert.equal(updatedPlanet.history.at(-1).eventType, 'expedition');
   assert.ok(updatedPlanet.settlements[0].activeProjects.includes('Study Exit'));
+});
+
+test('a version 6 campaign keeps its republic and folds old stocks into common grades', async () => {
+  const galaxy = createGalaxySeed();
+  delete galaxy.systems.aurelia.deposits;
+  galaxy.systems.aurelia.planets[0].settlements[0].storage = { energy: 9, food: 3 };
+  saved.set('quantum-rim-strategic-state', JSON.stringify({
+    version: 6,
+    state: {
+      schemaVersion: 6,
+      galaxy,
+      treasury: { credits: 4242, commodities: { food: 11, water: 4, energy: 30, alloys: 20, exoticMatter: 5 } },
+      taxCoffers: { aurelia: 15 },
+      imperialWorks: { skills: { 'early-warning': 1 }, facilities: {} },
+      events: [{ id: 'kept-event' }],
+      expeditions: [{ id: 'kept-expedition' }],
+      auditLog: [{ id: 'kept-log' }],
+      strategicTurn: 17,
+    },
+  }));
+  await useStrategicStore.persist.rehydrate();
+  const state = useStrategicStore.getState();
+  assert.equal(state.schemaVersion, 8);
+  assert.equal(state.treasury.credits, 4242);
+  assert.equal(state.treasury.commodities.plasmaCells, 30);
+  assert.equal(state.treasury.commodities.durasteel, 20);
+  assert.equal(state.treasury.commodities.hypermatter, 5);
+  assert.equal(state.treasury.commodities.food, 11);
+  assert.equal(state.strategicTurn, 17);
+  assert.equal(state.events[0].id, 'kept-event');
+  assert.equal(state.expeditions[0].id, 'kept-expedition');
+  assert.equal(state.auditLog[0].id, 'kept-log');
+  assert.equal(state.imperialWorks.skills['early-warning'], 1);
+  assert.equal(state.taxCoffers.aurelia, 15);
+  assert.ok(state.galaxy.systems.aurelia.deposits.durasteel > 0);
+  assert.equal(state.galaxy.systems.aurelia.planets[0].settlements[0].storage.plasmaCells, 9);
+  assert.ok(Array.isArray(state.sites));
+});
+
+test('a version 7 save that still holds legacy stocks is upgraded on load', async () => {
+  const galaxy = createGalaxySeed();
+  delete galaxy.systems.nyx.deposits;
+  saved.set('quantum-rim-strategic-state', JSON.stringify({
+    version: 7,
+    state: {
+      schemaVersion: 6,
+      galaxy,
+      treasury: { credits: 165071, commodities: { food: 0, water: 0, energy: 0, alloys: 0, exoticMatter: 28, plasmaCells: 0, durasteel: 0 } },
+      taxCoffers: { aurelia: 15 },
+      imperialWorks: { skills: {}, facilities: {} },
+      events: [{ id: 'kept-event' }],
+      expeditions: [],
+      auditLog: [],
+      strategicTurn: 14485,
+      sites: [],
+    },
+  }));
+  await useStrategicStore.persist.rehydrate();
+  const state = useStrategicStore.getState();
+  assert.equal(state.schemaVersion, 8);
+  assert.equal(state.treasury.credits, 165071);
+  assert.equal(state.strategicTurn, 14485);
+  assert.equal(state.events[0].id, 'kept-event');
+  assert.equal(state.treasury.commodities.hypermatter, 28);
+  assert.equal(state.treasury.commodities.energy, undefined);
+  assert.equal(state.treasury.commodities.exoticMatter, undefined);
+  assert.ok(state.galaxy.systems.nyx.deposits.plasmaCells > 0);
+});
+
+test('a short stock or a full cap spends nothing', () => {
+  const state = useStrategicStore.getState();
+  const ids = Object.keys(state.galaxy.systems);
+  const credits = state.treasury.credits;
+  useStrategicStore.setState({
+    treasury: { ...state.treasury, commodities: { ...state.treasury.commodities, durasteel: 0 } },
+  });
+  const short = useStrategicStore.getState().startConstruction(ids[0], 'mining');
+  assert.equal(short.ok, false);
+  assert.equal(short.reason, 'durasteel');
+  assert.equal(useStrategicStore.getState().treasury.credits, credits);
+  assert.equal(useStrategicStore.getState().sites.length, 0);
+
+  useStrategicStore.setState({ treasury: state.treasury });
+  assert.equal(useStrategicStore.getState().startConstruction(ids[0], 'mining').ok, true);
+  assert.equal(useStrategicStore.getState().startConstruction(ids[1], 'mining').ok, true);
+  const blocked = useStrategicStore.getState().startConstruction(ids[2], 'mining');
+  assert.equal(blocked.ok, false);
+  assert.equal(blocked.reason, 'cap');
+  assert.equal(useStrategicStore.getState().sites.length, 2);
+});
+
+test('paying for a rank leaves it inactive until the committed cycle count elapses', () => {
+  const state = useStrategicStore.getState();
+  const systemId = state.selectedSystemId;
+  const before = state.treasury.credits;
+  const started = state.startConstruction(systemId, 'mining');
+  assert.equal(started.ok, true);
+  assert.ok(started.cycles >= 2);
+  assert.ok(useStrategicStore.getState().treasury.credits < before);
+  assert.ok(useStrategicStore.getState().treasury.commodities.durasteel < state.treasury.commodities.durasteel);
+  const pending = useStrategicStore.getState().sites[0];
+  assert.equal(pending.level, 0);
+  assert.equal(pending.building.cyclesRemaining, started.cycles);
+  useStrategicStore.getState().advanceStrategicTime(started.cycles - 1);
+  assert.equal(useStrategicStore.getState().sites[0].level, 0);
+  useStrategicStore.getState().advanceStrategicTime(1);
+  const online = useStrategicStore.getState().sites[0];
+  assert.equal(online.level, 1);
+  assert.equal(online.building, null);
+  const locked = useStrategicStore.getState().startConstruction(systemId, 'mining');
+  assert.equal(locked.reason, 'level');
+});
+
+test('a stationed fleet lowers a locally generated incursion', () => {
+  const state = useStrategicStore.getState();
+  const planet = findPlanet(state.galaxy, state.selectedPlanetId);
+  const generated = {
+    event_type: 'faction-incursion',
+    activity: { id: 'fleet-command' },
+    event_metadata: {
+      faction: { name: 'Void Choir', doctrine: 'raid', bannerSeed: 'nyx:banner' },
+      invasion_lanes: { nodes: [{ id: 0 }, { id: 1 }], edges: [[0, 1]] },
+    },
+    provenance: [{ engine: 'coin-toss', operation: 'branch', mode: 'classical-fallback', detail: 'fallback', verified: false }],
+  };
+  const open = state.createCrisis(planet, { generated });
+  useStrategicStore.setState({
+    sites: [{ id: 'fleet-nyx', type: 'fleet', systemId: planet.systemId, level: 4, building: null, transit: null }],
+  });
+  const held = useStrategicStore.getState().createCrisis(planet, { generated });
+  assert.ok(held.severity < open.severity);
+  assert.equal(open.eventMetadata.faction.name, 'Void Choir');
+  assert.equal(open.eventMetadata.faction.bannerSeed, 'nyx:banner');
+  assert.equal(open.eventMetadata.invasion_lanes.edges.length, 1);
+  assert.equal(open.quantum[0].verified, false);
 });

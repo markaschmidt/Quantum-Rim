@@ -38,6 +38,28 @@ export async function putTextureBlob(key, blob) {
   });
 }
 
+export function scrubBlobUrls(value, seen = new Set()) {
+  if (!value || typeof value !== 'object') return value;
+  if (seen.has(value)) return value;
+  seen.add(value);
+  if (Array.isArray(value)) return value.map((item) => scrubBlobUrls(item, seen));
+  const next = {};
+  let changed = false;
+  for (const [key, item] of Object.entries(value)) {
+    if ((key === 'textureUrl' || key === 'audioUrl' || key === 'url') && typeof item === 'string' && item.startsWith('blob:')) {
+      next[key] = null;
+      changed = true;
+    } else if (item && typeof item === 'object') {
+      const child = scrubBlobUrls(item, seen);
+      next[key] = child;
+      if (child !== item) changed = true;
+    } else {
+      next[key] = item;
+    }
+  }
+  return changed ? next : value;
+}
+
 export async function resolveCachedTexture(key) {
   if (!key) return null;
   if (memory.has(key)) return memory.get(key);

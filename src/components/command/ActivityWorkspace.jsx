@@ -76,8 +76,8 @@ export function ActivityWorkspace({ activity, event, onCommit }) {
     score = clamp((primary * 0.45 + secondary * 0.35 + tertiary * 0.2) / 72 - budgetPenalty);
     metadata = {
       resourceCost: {
-        energy: Math.round(primary * 0.32),
-        alloys: Math.round(secondary * 0.18),
+        plasmaCells: Math.round(primary * 0.32),
+        durasteel: Math.round(secondary * 0.18),
       },
     };
     content = (

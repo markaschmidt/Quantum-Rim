@@ -1,5 +1,11 @@
 /* Quantum Rim landing — nav state, reveals, counters, orbital hero animation. */
 
+import { bootDiscordActivity } from '../services/discordActivity.js';
+
+// Preserve the Discord launch context before any link can navigate to the
+// simulation entry point.
+bootDiscordActivity();
+
 const nav = document.getElementById('nav');
 const onScroll = () => nav && nav.classList.toggle('scrolled', window.scrollY > 40);
 onScroll();

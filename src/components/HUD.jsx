@@ -15,6 +15,7 @@ import { MiniMap } from './MiniMap';
 import { FPSCounter } from './FPSCounter';
 import { BodyEditor } from './BodyEditor';
 import { TimeRewindControls } from './TimeRewind';
+import { STAR_FORMS, tuneQuasarJets } from '../game/starforge.js';
 import { recordCanvas } from '../utils/videoExport';
 import { takeScreenshot } from '../utils/screenshot';
 import { audioEngine } from '../utils/audio';
@@ -29,7 +30,9 @@ function BodyList() {
   const bodies        = useSimStore((s) => s.bodies);
   const selectedId    = useSimStore((s) => s.selectedBodyId);
   const selectBody    = useSimStore((s) => s.selectBody);
+  const dismissFresh  = useSimStore((s) => s.dismissFresh);
   const alive         = bodies.filter((b) => b.isAlive);
+  const now           = Date.now();
 
   return (
     <div className="hud-panel" style={{ minWidth: 160, maxHeight: 300, overflowY: 'auto' }}>
@@ -40,6 +43,7 @@ function BodyList() {
           <div
             key={b.id}
             onClick={() => selectBody(b.id === selectedId ? null : b.id)}
+            onMouseEnter={() => { if ((b.freshUntil || 0) > now) dismissFresh(b.id); }}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -51,6 +55,9 @@ function BodyList() {
             }}
           >
             <span className="body-dot" style={{ background: b.color }} />
+            {(b.freshUntil || 0) > now && (
+              <span title="Recently added" style={{ color: '#f0c14a', fontSize: 9, marginRight: 4 }}>NEW</span>
+            )}
             <span style={{ flex: 1 }}>{b.name}</span>
             <span style={{ color: 'rgba(142,232,255,0.5)', fontSize: 9 }}>
               {fmt(speed, 2)}
@@ -145,6 +152,15 @@ function TimeControls() {
   const togglePause   = useSimStore((s) => s.togglePause);
   const setTimeScale  = useSimStore((s) => s.setTimeScale);
   const loadScenario  = useSimStore((s) => s.loadScenario);
+  const adoptStarform = useSimStore((s) => s.adoptStarform);
+
+  async function changeStar(formId) {
+    adoptStarform(formId);
+    if (formId !== 'quasar') return;
+    const id = useSimStore.getState().selectedBodyId;
+    const jet = await tuneQuasarJets(`${id}:${Date.now()}`);
+    if (id) useSimStore.getState().setQuasar(id, jet);
+  }
 
   return (
     <div className="hud-panel" style={{ minWidth: 210 }}>
@@ -190,6 +206,17 @@ function TimeControls() {
             <option key={s.id} value={s.id}>{s.name}</option>
           ))}
         </select>
+      </div>
+
+      <div style={{ marginBottom: 8 }}>
+        <label>STAR</label>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+          {STAR_FORMS.map((form) => (
+            <button key={form.id} className="hud-btn" type="button" onClick={() => changeStar(form.id)}>
+              {form.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <hr className="hud-sep" />

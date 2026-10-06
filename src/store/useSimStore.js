@@ -16,6 +16,7 @@ import { computeEnergies } from '../physics/gravity';
 import { checkRocheDisruptions } from '../physics/roche';
 import { pushStateToURL, loadStateFromURL } from '../utils/urlState';
 import { decorateBody } from '../game/planetProfile';
+import { buildStarform } from '../game/starforge.js';
 import { massToRadius } from '../physics/bodyScale.js';
 
 export { massToRadius };
@@ -277,6 +278,84 @@ export const useSimStore = create(
         rocheEnabled: false,
         isPaused: false,
       });
+    },
+
+    applyViewerOrder(plan) {
+      set((state) => {
+        const patches = new Map((plan.patches || []).map((patch) => [patch.id, patch]));
+        const kicks = new Map((plan.kicks || []).map((kick) => [kick.id, kick.delta]));
+        const next = state.bodies.map((body) => {
+          const patch = patches.get(body.id);
+          const delta = kicks.get(body.id);
+          if (!patch && !delta) return body;
+          const velocity = delta
+            ? body.velocity.map((value, axis) => value + delta[axis])
+            : (patch.velocity || body.velocity);
+          return {
+            ...(patch ? { ...body, ...patch, id: body.id } : body),
+            velocity,
+            isAlive: body.isAlive !== false,
+            ...(delta ? { kick: { band: 'graze', permanent: false, excess: delta } } : {}),
+          };
+        });
+        const freshUntil = Date.now() + 60000;
+        const spawned = (plan.simBodies || []).map((body) => decorateBody({
+          ...body,
+          radius: body.radius ?? massToRadius(body.mass, body.type),
+          trail: body.trail ?? [],
+          isAlive: true,
+          mergedInto: null,
+          freshUntil,
+        }));
+        const last = spawned[spawned.length - 1];
+        const inspectable = last && ['rocky', 'moon', 'gas_giant'].includes(last.type);
+        return {
+          bodies: next.concat(spawned),
+          selectedBodyId: last ? last.id : state.selectedBodyId,
+          inspectionBodyId: inspectable ? last.id : state.inspectionBodyId,
+          focusBodyId: last ? last.id : state.focusBodyId,
+          focusAt: last ? Date.now() : state.focusAt,
+        };
+      });
+    },
+
+    dismissFresh(id) {
+      set((state) => ({
+        bodies: state.bodies.map((body) => (body.id === id ? { ...body, freshUntil: 0 } : body)),
+      }));
+    },
+
+    adoptStarform(formId) {
+      const stamp = Date.now().toString(36);
+      set((state) => {
+        const stars = state.bodies.filter((body) => (
+          body.isAlive !== false && (body.type === 'star' || body.type === 'black_hole' || body.quasar)
+        ));
+        const anchor = stars[0] || { position: [0, 0, 0], velocity: [0, 0, 0] };
+        const rest = state.bodies.filter((body) => !stars.some((star) => star.id === body.id));
+        const freshUntil = Date.now() + 60000;
+        const spawned = buildStarform(formId, anchor, stamp).map((body) => decorateBody({
+          ...body,
+          freshUntil,
+          trail: body.trail ?? [],
+          isAlive: true,
+          mergedInto: null,
+        }));
+        return {
+          bodies: rest.concat(spawned),
+          selectedBodyId: spawned[0]?.id || null,
+          focusBodyId: spawned[0]?.id || null,
+          focusAt: Date.now(),
+        };
+      });
+    },
+
+    setQuasar(id, patch) {
+      set((state) => ({
+        bodies: state.bodies.map((body) => (
+          body.id === id && body.quasar ? { ...body, quasar: { ...body.quasar, ...patch } } : body
+        )),
+      }));
     },
 
     // ── Add a new body programmatically ──────

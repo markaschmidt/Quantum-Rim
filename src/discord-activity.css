@@ -1,0 +1,54 @@
+.discord-activity-status {
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top));
+  right: max(12px, env(safe-area-inset-right));
+  z-index: 100000;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(280px, calc(100vw - 24px));
+  padding: 8px 12px;
+  border: 1px solid rgba(132, 150, 255, 0.32);
+  border-radius: 999px;
+  background: rgba(8, 10, 23, 0.88);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.35);
+  color: #dce5ff;
+  font: 600 11px/1.2 Inter, system-ui, sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  backdrop-filter: blur(12px);
+  pointer-events: none;
+}
+
+.discord-activity-status__copy {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.discord-activity-status__mark {
+  color: #f6c453;
+  font-size: 9px;
+  text-shadow: 0 0 10px currentColor;
+}
+
+.discord-activity-status[data-state='ready'] .discord-activity-status__mark {
+  color: #6dffca;
+}
+
+.discord-activity-status[data-state='error'] {
+  border-color: rgba(255, 93, 127, 0.5);
+}
+
+.discord-activity-status[data-state='error'] .discord-activity-status__mark {
+  color: #ff5d7f;
+}
+
+@media (max-width: 700px) {
+  .discord-activity-status {
+    top: max(8px, env(safe-area-inset-top));
+    right: max(8px, env(safe-area-inset-right));
+    padding: 7px 10px;
+    font-size: 10px;
+  }
+}

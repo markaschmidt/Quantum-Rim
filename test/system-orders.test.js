@@ -63,6 +63,26 @@ test('add planet places a named world outside the star and can join the republic
   assert.notEqual(again.simBodies[0].id, world.id);
 });
 
+test('a new planet stays near the inner worlds when debris is far away', () => {
+  const { system, bodies } = aureliaScene();
+  const far = {
+    id: 'shard-far',
+    name: 'Shard 9',
+    type: 'rocky',
+    mass: 0.01,
+    radius: 0.2,
+    position: [40, 0, 0],
+    velocity: [0, 0.1, 0],
+    isAlive: true,
+    isDebris: true,
+  };
+  const plan = planSystemOrder('add-planet', {
+    system, bodies: [...bodies, far], stamp: 'close-lane',
+  });
+  const dist = Math.hypot(...plan.simBodies[0].position);
+  assert.ok(dist < 12, `planet landed at ${dist}`);
+});
+
 test('asteroid emergence and debris stay finite and inbound', () => {
   const { system, bodies } = aureliaScene();
   const asteroids = planSystemOrder('asteroid-emergence', { system, bodies, stamp: 'rocks' });

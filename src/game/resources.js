@@ -1,26 +1,61 @@
 export const DEFAULT_COMMODITIES = Object.freeze({
   food: 480,
   water: 620,
-  energy: 740,
-  alloys: 360,
-  exoticMatter: 28,
+  plasmaCells: 740,
+  tibanna: 80,
+  coaxium: 12,
+  durasteel: 360,
+  doonium: 48,
+  beskar: 8,
+  hypermatter: 28,
+  kyber: 6,
+  cortosis: 4,
 });
 
 export const RESOURCE_LABELS = Object.freeze({
   food: 'Food',
   water: 'Water',
-  energy: 'Energy',
-  alloys: 'Alloys',
-  exoticMatter: 'Exotic Matter',
+  plasmaCells: 'Plasma cells',
+  tibanna: 'Tibanna',
+  coaxium: 'Coaxium',
+  durasteel: 'Durasteel',
+  doonium: 'Doonium',
+  beskar: 'Beskar',
+  hypermatter: 'Hypermatter',
+  kyber: 'Kyber',
+  cortosis: 'Cortosis',
 });
 
 export const BASE_PRICES = Object.freeze({
   food: 8,
   water: 6,
-  energy: 10,
-  alloys: 24,
-  exoticMatter: 180,
+  plasmaCells: 10,
+  tibanna: 36,
+  coaxium: 140,
+  durasteel: 24,
+  doonium: 70,
+  beskar: 220,
+  hypermatter: 180,
+  kyber: 260,
+  cortosis: 240,
 });
+
+const LEGACY_COMMODITIES = Object.freeze({
+  energy: 'plasmaCells',
+  alloys: 'durasteel',
+  exoticMatter: 'hypermatter',
+});
+
+/** Fold a version-6 stock into the graded ledger. Missing grades stay at zero. */
+export function migrateCommodityBag(bag = {}) {
+  const next = Object.fromEntries(Object.keys(DEFAULT_COMMODITIES).map((key) => [key, 0]));
+  for (const [key, amount] of Object.entries(bag || {})) {
+    const name = LEGACY_COMMODITIES[key] || key;
+    if (!(name in next)) continue;
+    next[name] += clampAmount(amount);
+  }
+  return next;
+}
 
 export function clampAmount(value) {
   return Math.max(0, Math.round(Number(value) || 0));
@@ -64,13 +99,13 @@ export function calculateCrisisLoss(event, performance = 0.5) {
     base.commodities.food = -Math.round(18 + exposed * 90);
     base.commodities.water = -Math.round(8 + exposed * 38);
   } else if (activity.includes('asteroid') || activity.includes('debris')) {
-    base.commodities.alloys = -Math.round(12 + exposed * 70);
-    base.commodities.energy = -Math.round(10 + exposed * 48);
+    base.commodities.durasteel = -Math.round(12 + exposed * 70);
+    base.commodities.plasmaCells = -Math.round(10 + exposed * 48);
   } else if (activity.includes('magnetic') || activity.includes('aurora')) {
-    base.commodities.energy = -Math.round(22 + exposed * 95);
+    base.commodities.plasmaCells = -Math.round(22 + exposed * 95);
     base.commodities.water = -Math.round(4 + exposed * 26);
   } else {
-    base.commodities.energy = -Math.round(8 + exposed * 44);
+    base.commodities.plasmaCells = -Math.round(8 + exposed * 44);
     base.commodities.food = -Math.round(5 + exposed * 30);
   }
   return base;

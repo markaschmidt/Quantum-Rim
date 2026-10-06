@@ -1,0 +1,7 @@
+ambientCG CC0 surface previews used as station hull maps.
+
+- Metal027: hull-dark.jpg and hull-dark-normal.jpg
+- SheetMetal001: hull-worn.jpg and hull-worn-normal.jpg
+- PaintedMetal001: hull-hazard.jpg
+
+Source: https://ambientcg.com (CC0). No attribution required.

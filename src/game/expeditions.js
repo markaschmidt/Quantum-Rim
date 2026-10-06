@@ -15,11 +15,11 @@ const LABELS = [
 export const EXPEDITION_APPROACHES = Object.freeze({
   scan: {
     label: 'Scan', detail: 'Spend energy to lower uncertainty.', bonus: 0.2,
-    cost: { credits: -300, commodities: { energy: -4 } },
+    cost: { credits: -300, commodities: { plasmaCells: -4 } },
   },
   breach: {
     label: 'Breach', detail: 'Use alloys and power to force a route.', bonus: 0.13,
-    cost: { credits: 0, commodities: { alloys: -8, energy: -7 } },
+    cost: { credits: 0, commodities: { durasteel: -8, plasmaCells: -7 } },
   },
   negotiate: {
     label: 'Negotiate', detail: 'Spend political capital and supplies.', bonus: 0.16,
